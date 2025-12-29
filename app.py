@@ -11,7 +11,7 @@ app = Flask(__name__)
 
 # Configure CORS to allow requests from frontend and handle large responses
 CORS(app, 
-     origins=["http://localhost:5173", "http://localhost:3000", "https://server.uemcseaiml.org"],
+     origins=["http://localhost:5173", "http://localhost:3000", "https://server.uemcseaiml.org", "https://sweet-store-frontend-ten.vercel.app"],
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
      allow_headers=["Content-Type", "Authorization"],
      expose_headers=["Content-Type"],
