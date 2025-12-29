@@ -2,19 +2,22 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from model.sweet_model import add_sweet, get_sweets, remove_sweet, get_sweet_by_id
 from model.order_model import place_order, get_orders, get_daily_summary, update_order_status, edit_order
+import os
+from dotenv import load_dotenv
+
+load_dotenv("env")
 
 app = Flask(__name__)
 
-# Configure CORS to handle large responses with base64 images
-CORS(app, resources={
-    r"/*": {
-        "origins": "*",
-        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"],
-        "expose_headers": ["Content-Type"],
-        "max_age": 3600
-    }
-})
+# Configure CORS to allow requests from frontend and handle large responses
+CORS(app, 
+     origins=["http://localhost:5173", "http://localhost:3000", "https://server.uemcseaiml.org"],
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+     allow_headers=["Content-Type", "Authorization"],
+     expose_headers=["Content-Type"],
+     supports_credentials=True,
+     max_age=3600
+)
 
 # Increase max content length to handle large base64 images (16MB)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
@@ -276,5 +279,11 @@ def admin_edit_order(order_id):
         return jsonify({"error": f"Failed to edit order: {str(e)}"}), 500
 
 if __name__ == "__main__":
+    # Get host and port from environment variables
+    host = os.getenv("HOST", "127.0.0.1")
+    port = int(os.getenv("PORT", 5000))
+    
+    print(f"🚀 Starting server on http://{host}:{port}")
+    
     # Disable auto-reloader on Windows to avoid intermittent WinError 10038 during restarts
-    app.run(debug=True, use_reloader=False)
+    app.run(host=host, port=port, debug=True, use_reloader=False)
