@@ -13,11 +13,14 @@
 - [x] Detailed logging added for debugging
 - [x] Backward compatibility with legacy field names
 - [x] Unit validation (only `kg` or `piece`)
+- [x] **Twilio SMS integration added** for customer and manager notifications
 
 ### Testing Scripts ✅
 - [x] `test_image_api.ps1` - Comprehensive API testing
 - [x] `deploy.ps1` - Automated deployment helper
 - [x] `IMAGE_FIX_SUMMARY.md` - Complete documentation
+- [x] `test_sms.py` - SMS notification testing
+- [x] `TWILIO_SETUP_GUIDE.md` - SMS setup documentation
 
 ---
 
@@ -25,13 +28,20 @@
 
 ### Before Deploying
 - [ ] Review all code changes
+- [ ] Configure Twilio credentials in `.env` (see TWILIO_SETUP_GUIDE.md)
+- [ ] Test SMS: `python test_sms.py`
 - [ ] Run local tests: `python app.py`
 - [ ] Test locally: `.\test_image_api.ps1`
 - [ ] Verify no errors in terminal
 
 ### Deploy to Production
-- [ ] Commit changes: `git add . && git commit -m "Fix: Image handling"`
+- [ ] Commit changes: `git add . && git commit -m "Add: Twilio SMS notifications"`
 - [ ] Push to GitHub: `git push origin main`
+- [ ] **Add Twilio environment variables to Render:**
+  - TWILIO_ACCOUNT_SID
+  - TWILIO_AUTH_TOKEN
+  - TWILIO_PHONE_NUMBER
+  - MANAGER_PHONE_NUMBER
 - [ ] Monitor Render deployment dashboard
 - [ ] Wait for deployment to complete (2-5 minutes)
 - [ ] Check deployment logs for errors
@@ -39,6 +49,8 @@
 ### After Deployment
 - [ ] Test production API: Update URL in `test_image_api.ps1`
 - [ ] Run production tests: `.\test_image_api.ps1`
+- [ ] Place a test order to verify SMS notifications
+- [ ] Check Twilio Console logs for SMS delivery
 - [ ] Check backend logs on Render
 - [ ] Verify API responses include images
 

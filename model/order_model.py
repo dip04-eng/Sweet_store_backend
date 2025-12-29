@@ -131,6 +131,9 @@ def place_order(order):
         item["unit"] = unit
 
     order_collection.insert_one(order)
+    
+    # Return the order with its generated _id for PDF and email
+    return order
 
 def _serialize_datetimes(doc):
     """Convert datetime objects in a document to strings to make them JSON-serializable."""

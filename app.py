@@ -2,10 +2,12 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from model.sweet_model import add_sweet, get_sweets, remove_sweet, get_sweet_by_id
 from model.order_model import place_order, get_orders, get_daily_summary, update_order_status, edit_order
+from utils.pdf_generator import generate_order_pdf
+from utils.email_service import send_order_invoice_to_manager
 import os
 from dotenv import load_dotenv
 
-load_dotenv("env")
+load_dotenv(".env")
 
 app = Flask(__name__)
 
@@ -21,6 +23,14 @@ CORS(app,
 
 # Increase max content length to handle large base64 images (16MB)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+
+@app.route("/server-date", methods=["GET"])
+def get_server_date():
+    """Get current server date in YYYY-MM-DD format."""
+    from datetime import datetime
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    print(f"📅 Server date requested: {current_date}")
+    return jsonify({"date": current_date})
 
 @app.route("/sweets", methods=["GET"])
 def fetch_sweets():
@@ -106,8 +116,42 @@ def new_order():
     
     print("\n💾 Saving order to database...")
     try:
-        place_order(data)
+        order_result = place_order(data)
         print("✅ Order saved successfully!")
+        print(f"Order ID: {order_result.get('_id')}")
+        
+        # Generate PDF invoice and send to manager
+        print("\n📧 Generating invoice and sending to manager...")
+        try:
+            order_id = str(order_result.get('_id'))
+            pdf_filename = f"invoice_{order_id}.pdf"
+            
+            print(f"   Generating PDF: {pdf_filename}...")
+            pdf_path = generate_order_pdf(order_result, pdf_filename)
+            
+            if pdf_path:
+                print(f"   PDF created at: {pdf_path}")
+                print(f"   Sending email to manager...")
+                email_result = send_order_invoice_to_manager(order_result, pdf_path)
+                
+                if email_result:
+                    print(f"   ✅ Email sent successfully!")
+                else:
+                    print(f"   ❌ Email sending failed!")
+                
+                # Clean up PDF file after sending
+                if os.path.exists(pdf_path):
+                    os.remove(pdf_path)
+                    print(f"   🗑️ Cleaned up temporary PDF: {pdf_filename}")
+            else:
+                print(f"   ❌ PDF generation failed!")
+                
+        except Exception as email_error:
+            print(f"❌ Email notification error: {str(email_error)}")
+            import traceback
+            traceback.print_exc()
+            # Don't fail the order if email fails
+        
         print("="*60 + "\n")
         return jsonify({
             "message": "Order placed successfully! 🎉",
@@ -232,7 +276,18 @@ def admin_summary():
 
 @app.route("/admin/update_order_status", methods=["PUT"])
 def admin_update_order_status():
-    """Update status of an order by orderId."""
+    """U
+        # Send SMS notification to customer about status change
+        customer_phone = updated.get('mobile', '')
+        if customer_phone:
+            print(f"\n📱 Sending status update SMS to customer...")
+            send_order_status_update(
+                customer_phone=customer_phone,
+                order_id=order_id,
+                status=status
+            )
+        
+        pdate status of an order by orderId."""
     # Accept JSON, form, or query params but require BOTH orderId and status
     data = request.get_json(silent=True) or {}
     if not data and request.form:
