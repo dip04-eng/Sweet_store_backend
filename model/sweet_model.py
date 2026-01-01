@@ -86,6 +86,7 @@ def add_sweet(data):
         "image": image_data,
         "category": data.get("category", "").strip(),
         "unit": unit,
+        "isFestival": bool(data.get("isFestival", False)),
     }
 
     result = sweet_collection.insert_one(doc)
@@ -114,6 +115,8 @@ def get_sweets(category: str | None = None):
             d["category"] = "Uncategorized"
         if "unit" not in d:
             d["unit"] = "kg"  # Default to 'kg' for backward compatibility
+        if "isFestival" not in d:
+            d["isFestival"] = False  # Default to False for backward compatibility
         
         # Normalize image field: ensure 'image' field exists
         # Support legacy records that may have 'image_url' or 'imageUrl'

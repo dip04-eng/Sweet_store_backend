@@ -99,8 +99,13 @@ def place_order(order):
     try:
         if "total" in order:
             order["total"] = float(order.get("total", 0) or 0)
+        if "advancePaid" in order:
+            order["advancePaid"] = float(order.get("advancePaid", 0) or 0)
+        else:
+            order["advancePaid"] = 0
     except (ValueError, TypeError):
         order["total"] = 0
+        order["advancePaid"] = 0
 
     # Validate and coerce item prices and quantities to numeric types
     for item in order.get("items", []) or []:
@@ -191,7 +196,9 @@ def get_orders():
     return [_serialize_order(d) for d in docs]
 
 def get_daily_summary():
-    """Get summary statistics for today's orders."""
+    """Get summary statistics for today's orders.
+    Only includes non-cancelled orders in the calculations.
+    """
     if order_collection is None:
         print("⚠️ Database not connected; returning empty daily summary")
         return {
@@ -203,7 +210,11 @@ def get_daily_summary():
         }
 
     today = datetime.now().strftime("%Y-%m-%d")
-    today_orders = list(order_collection.find({"orderDate": today}, {"_id": 0}).sort("createdAt", -1))
+    # Exclude cancelled orders from today's summary
+    today_orders = list(order_collection.find({
+        "orderDate": today,
+        "status": {"$ne": "Cancelled"}  # Exclude cancelled orders
+    }, {"_id": 0}).sort("createdAt", -1))
 
     total_orders = len(today_orders)
     total_revenue = 0
@@ -313,6 +324,7 @@ def edit_order(order_id: str, updates: dict):
         "address": "address",
         "mobile": "mobile",
         "total": "total",
+        "advancePaid": "advancePaid",
         "orderDate": "orderDate",
         "deliveryDate": "deliveryDate",
         "preference": "preference",
@@ -324,7 +336,7 @@ def edit_order(order_id: str, updates: dict):
         if k not in field_map:
             continue
         dest = field_map[k]
-        if dest == "total":
+        if dest == "total" or dest == "advancePaid":
             try:
                 v = float(v or 0)
             except (ValueError, TypeError):

@@ -333,6 +333,36 @@ def admin_edit_order(order_id):
     except Exception as e:
         return jsonify({"error": f"Failed to edit order: {str(e)}"}), 500
 
+@app.route("/admin/fix-festival-sweets", methods=["POST"])
+def fix_festival_sweets():
+    """Update specific sweets to mark them as festival sweets."""
+    from model.sweet_model import sweet_collection
+    
+    if sweet_collection is None:
+        return jsonify({"error": "Database not connected"}), 500
+    
+    # Get the sweet name from request
+    data = request.get_json() or {}
+    sweet_name = data.get("sweetName", "")
+    
+    if not sweet_name:
+        return jsonify({"error": "sweetName is required"}), 400
+    
+    # Update the sweet to be a festival sweet
+    result = sweet_collection.update_one(
+        {"name": sweet_name},
+        {"$set": {"isFestival": True}}
+    )
+    
+    if result.matched_count == 0:
+        return jsonify({"error": f"Sweet '{sweet_name}' not found"}), 404
+    
+    return jsonify({
+        "message": f"✅ '{sweet_name}' is now a Festival sweet!",
+        "matched": result.matched_count,
+        "modified": result.modified_count
+    }), 200
+
 if __name__ == "__main__":
     # Get host and port from environment variables
     host = os.getenv("HOST", "127.0.0.1")
