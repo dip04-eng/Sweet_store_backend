@@ -266,10 +266,13 @@ def get_daily_summary():
                 total_pieces_sold += quantity_ordered
 
             if sweet_name not in sweet_stats:
-                sweet_stats[sweet_name] = {"name": sweet_name, "quantity": 0, "revenue": 0}
+                sweet_stats[sweet_name] = {"name": sweet_name, "quantity": 0, "revenue": 0, "unit": unit}
 
             sweet_stats[sweet_name]["quantity"] += quantity_ordered
             sweet_stats[sweet_name]["revenue"] += quantity_ordered * price
+            # Keep the unit consistent (first occurrence wins)
+            if "unit" not in sweet_stats[sweet_name]:
+                sweet_stats[sweet_name]["unit"] = unit
 
     popular_sweets = sorted(sweet_stats.values(), key=lambda x: x["quantity"], reverse=True)
 
