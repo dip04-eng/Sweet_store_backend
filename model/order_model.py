@@ -225,7 +225,12 @@ def get_daily_summary():
             continue
 
     total_items_sold = 0
+    total_kg_sold = 0
+    total_pieces_sold = 0
     sweet_stats = {}
+    
+    # Import sweet collection to look up units
+    from model.sweet_model import sweet_collection
 
     for order in today_orders:
         for item in order.get("items", []) or []:
@@ -235,6 +240,17 @@ def get_daily_summary():
                 quantity_ordered = 0
 
             sweet_name = item.get("sweetName") or item.get("name") or "Unknown"
+            unit = item.get("unit")  # Get unit type from order item
+            
+            # If unit not in order, look it up from sweets collection
+            if not unit and sweet_collection is not None:
+                sweet_doc = sweet_collection.find_one({"name": sweet_name})
+                if sweet_doc:
+                    unit = sweet_doc.get("unit", "piece")
+                else:
+                    unit = "piece"  # Default fallback
+            elif not unit:
+                unit = "piece"  # Default fallback if no sweet_collection
 
             try:
                 price = float(item.get("price", 0) or 0)
@@ -242,6 +258,12 @@ def get_daily_summary():
                 price = 0
 
             total_items_sold += quantity_ordered
+            
+            # Separate kg and pieces
+            if unit == "kg":
+                total_kg_sold += quantity_ordered
+            else:
+                total_pieces_sold += quantity_ordered
 
             if sweet_name not in sweet_stats:
                 sweet_stats[sweet_name] = {"name": sweet_name, "quantity": 0, "revenue": 0}
@@ -257,6 +279,8 @@ def get_daily_summary():
         "total_orders": total_orders,
         "total_revenue": total_revenue,
         "total_items_sold": total_items_sold,
+        "total_kg_sold": round(total_kg_sold, 2),
+        "total_pieces_sold": int(total_pieces_sold),
         "popular_sweets": popular_sweets[:5],
         "orders": serialized_orders
     }
