@@ -1,10 +1,11 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from model.sweet_model import add_sweet, get_sweets, remove_sweet, get_sweet_by_id
 from model.order_model import place_order, get_orders, get_daily_summary, update_order_status, edit_order
-from utils.pdf_generator import generate_order_pdf
+from utils.pdf_generator import generate_order_pdf, generate_orders_statement_pdf
 from utils.email_service import send_order_invoice_to_manager
 import os
+from io import BytesIO
 from dotenv import load_dotenv
 
 load_dotenv(".env")
@@ -13,10 +14,10 @@ app = Flask(__name__)
 
 # Configure CORS to allow requests from frontend and handle large responses
 CORS(app, 
-     origins=["http://localhost:5173", "http://localhost:3000", "https://server.uemcseaiml.org", "https://sweet-store-frontend-ten.vercel.app"],
+     origins=["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173", "https://server.uemcseaiml.org", "https://sweet-store-frontend-ten.vercel.app"],
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-     allow_headers=["Content-Type", "Authorization"],
-     expose_headers=["Content-Type"],
+     allow_headers=["Content-Type", "Authorization", "Accept"],
+     expose_headers=["Content-Type", "Content-Disposition"],
      supports_credentials=True,
      max_age=3600
 )
@@ -362,6 +363,60 @@ def fix_festival_sweets():
         "matched": result.matched_count,
         "modified": result.modified_count
     }), 200
+
+
+@app.route("/admin/download_statement", methods=["POST", "OPTIONS"])
+def admin_download_statement():
+    """Generate and download a PDF statement for filtered orders."""
+    # Handle preflight OPTIONS request
+    if request.method == "OPTIONS":
+        response = app.make_default_options_response()
+        response.headers['Access-Control-Allow-Origin'] = request.headers.get('Origin', '*')
+        response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Accept'
+        response.headers['Access-Control-Max-Age'] = '3600'
+        return response
+    
+    try:
+        data = request.get_json() or {}
+        orders = data.get('orders', [])
+        filters = data.get('filters', {})
+        
+        if not orders:
+            return jsonify({"error": "No orders provided"}), 400
+        
+        print(f"\n📥 Statement download requested")
+        print(f"   Orders count: {len(orders)}")
+        print(f"   Filters: {filters}")
+        
+        # Generate PDF
+        pdf_bytes = generate_orders_statement_pdf(orders, filters)
+        
+        if not pdf_bytes:
+            return jsonify({"error": "Failed to generate PDF"}), 500
+        
+        # Create BytesIO buffer for sending
+        buffer = BytesIO(pdf_bytes)
+        buffer.seek(0)
+        
+        # Generate filename with current date
+        from datetime import datetime
+        date_str = datetime.now().strftime('%Y-%m-%d')
+        filename = f"orders_statement_{date_str}.pdf"
+        
+        return send_file(
+            buffer,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=filename
+        )
+        
+    except Exception as e:
+        print(f"❌ Statement download error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Failed to generate statement: {str(e)}"}), 500
+
 
 if __name__ == "__main__":
     # Get host and port from environment variables
