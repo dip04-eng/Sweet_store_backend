@@ -3,7 +3,7 @@ from flask_cors import CORS
 from model.sweet_model import add_sweet, get_sweets, remove_sweet, get_sweet_by_id
 from model.order_model import place_order, get_orders, get_daily_summary, update_order_status, edit_order
 from utils.pdf_generator import generate_order_pdf, generate_orders_statement_pdf
-from utils.email_service import send_order_invoice_to_manager
+from utils.email_service import send_order_invoice_to_manager, send_contact_form_to_manager
 import os
 from io import BytesIO
 from dotenv import load_dotenv
@@ -416,6 +416,59 @@ def admin_download_statement():
         import traceback
         traceback.print_exc()
         return jsonify({"error": f"Failed to generate statement: {str(e)}"}), 500
+
+
+@app.route("/contact", methods=["POST", "OPTIONS"])
+def submit_contact_form():
+    """Handle contact form submissions and send email to manager."""
+    # Handle CORS preflight
+    if request.method == "OPTIONS":
+        response = jsonify({"status": "ok"})
+        response.headers.add("Access-Control-Allow-Origin", request.headers.get("Origin", "*"))
+        response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type")
+        return response, 200
+    
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['name', 'email', 'message']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({"error": f"Missing required field: {field}"}), 400
+        
+        # Extract contact data
+        contact_data = {
+            'name': data.get('name', '').strip(),
+            'email': data.get('email', '').strip(),
+            'phone': data.get('phone', '').strip() or 'Not provided',
+            'message': data.get('message', '').strip()
+        }
+        
+        print(f"📧 Contact form submission received from: {contact_data['name']}")
+        
+        # Send email to manager
+        email_sent = send_contact_form_to_manager(contact_data)
+        
+        if email_sent:
+            print(f"✅ Contact form email sent successfully to manager")
+            return jsonify({
+                "success": True,
+                "message": "Thank you! Your message has been sent successfully. We'll get back to you soon."
+            }), 200
+        else:
+            print(f"⚠️ Failed to send contact form email")
+            return jsonify({
+                "success": False,
+                "message": "Message received but email notification failed. We'll still review your message."
+            }), 200
+            
+    except Exception as e:
+        print(f"❌ Contact form error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Failed to process contact form: {str(e)}"}), 500
 
 
 if __name__ == "__main__":

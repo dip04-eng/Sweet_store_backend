@@ -149,3 +149,75 @@ def send_order_invoice_to_manager(order_data, pdf_path):
     """
     
     return send_email_with_attachment(MANAGER_EMAIL, subject, body, pdf_path)
+
+def send_contact_form_to_manager(contact_data):
+    """
+    Send contact form submission to manager.
+    
+    Args:
+        contact_data: Dictionary containing name, email, phone, message
+    
+    Returns:
+        Boolean: True if successful, False otherwise
+    """
+    if not MANAGER_EMAIL:
+        print("⚠️ Manager email not configured")
+        return False
+    
+    name = contact_data.get('name', 'N/A')
+    email = contact_data.get('email', 'N/A')
+    phone = contact_data.get('phone', 'N/A')
+    message = contact_data.get('message', 'N/A')
+    
+    subject = f"📧 New Contact Form Submission from {name}"
+    
+    body = f"""
+    <html>
+    <body style="font-family: Arial, sans-serif; color: #333;">
+        <div style="background-color: #C41E3A; padding: 20px; text-align: center;">
+            <h1 style="color: white; margin: 0;">🍬 Mansoor Hotel & Sweets</h1>
+        </div>
+        
+        <div style="padding: 20px;">
+            <h2 style="color: #C41E3A;">New Contact Form Message</h2>
+            
+            <p>Someone has sent a message through the website contact form:</p>
+            
+            <table style="border-collapse: collapse; width: 100%; margin: 20px 0;">
+                <tr>
+                    <td style="padding: 12px; background-color: #FFF8DC; font-weight: bold; width: 150px;">Name:</td>
+                    <td style="padding: 12px; background-color: #FFFEF0;">{name}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 12px; background-color: #FFF8DC; font-weight: bold;">Email:</td>
+                    <td style="padding: 12px; background-color: #FFFEF0;"><a href="mailto:{email}">{email}</a></td>
+                </tr>
+                <tr>
+                    <td style="padding: 12px; background-color: #FFF8DC; font-weight: bold;">Phone:</td>
+                    <td style="padding: 12px; background-color: #FFFEF0;">{phone}</td>
+                </tr>
+            </table>
+            
+            <div style="margin: 20px 0;">
+                <h3 style="color: #C41E3A; margin-bottom: 10px;">Message:</h3>
+                <div style="background-color: #FFF8DC; padding: 20px; border-left: 4px solid #C41E3A; white-space: pre-wrap;">
+{message}
+                </div>
+            </div>
+            
+            <p style="background-color: #FEF3E2; padding: 15px; border-left: 4px solid #C41E3A; margin-top: 20px;">
+                <strong>💡 Action Required:</strong> Please respond to this inquiry at your earliest convenience.
+            </p>
+        </div>
+        
+        <div style="background-color: #F5F5DC; padding: 15px; text-align: center; margin-top: 20px;">
+            <p style="margin: 0; color: #666; font-size: 12px;">
+                This is an automated notification from Mansoor Hotel & Sweets Contact Form
+            </p>
+        </div>
+    </body>
+    </html>
+    """
+    
+    print(f"📧 Sending contact form to manager: {MANAGER_EMAIL}")
+    return send_email_with_attachment(MANAGER_EMAIL, subject, body)
