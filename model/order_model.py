@@ -34,6 +34,23 @@ def validate_dates(order_date_str, delivery_date_str):
     
     return True, None
 
+def validate_dates_for_edit(order_date_str, delivery_date_str):
+    """Validate dates when editing an order. Allows past dates but ensures delivery >= order date.
+    Returns (True, None) if valid, or (False, error_message) if invalid.
+    """
+    try:
+        # Parse dates from YYYY-MM-DD format
+        order_date = datetime.strptime(order_date_str, "%Y-%m-%d").date()
+        delivery_date = datetime.strptime(delivery_date_str, "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        return False, "Invalid date format. Expected YYYY-MM-DD."
+    
+    # Only check if deliveryDate is >= orderDate (allow past dates for editing)
+    if delivery_date < order_date:
+        return False, "Delivery date must be on or after the order date."
+    
+    return True, None
+
 MONGO_URI = os.getenv("MONGO_URI")
 if not MONGO_URI:
     # Fallback to local Mongo for development so endpoints don't 500 when env is missing
@@ -337,8 +354,8 @@ def edit_order(order_id: str, updates: dict):
             else:
                 order_date = datetime.now().strftime("%Y-%m-%d")
         
-        # Validate the new delivery date
-        is_valid, error_msg = validate_dates(order_date, updates["deliveryDate"])
+        # Use edit-specific validation that allows past dates
+        is_valid, error_msg = validate_dates_for_edit(order_date, updates["deliveryDate"])
         if not is_valid:
             raise ValueError(error_msg)
 
