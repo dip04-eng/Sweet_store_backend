@@ -8,40 +8,57 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from datetime import datetime
 import os
+import sys
 
 # Register Unicode-compatible fonts for Hindi/Devanagari support
 UNICODE_FONT = 'Helvetica'
 UNICODE_FONT_BOLD = 'Helvetica-Bold'
 
 try:
-    # Try Nirmala UI (Windows 10/11 Hindi font) - best option
-    nirmala_path = 'C:\\Windows\\Fonts\\Nirmala.ttf'
-    nirmala_ttc_path = 'C:\\Windows\\Fonts\\Nirmala.ttc'
+    # List of fonts to try (in order of preference)
+    fonts_to_try = [
+        ('C:\\Windows\\Fonts\\seguiemj.ttf', 'Segoe UI Emoji'),  # Has good Unicode support
+        ('C:\\Windows\\Fonts\\calibri.ttf', 'Calibri'),  # Better Unicode than Helvetica
+        ('C:\\Windows\\Fonts\\arial.ttf', 'Arial'),  # Basic Unicode support
+        ('C:\\Windows\\Fonts\\Nirmala.ttc', 'NirmalaUI'),  # Hindi-specific (TTC might have issues)
+    ]
     
-    if os.path.exists(nirmala_path):
-        pdfmetrics.registerFont(TTFont('HindiFont', nirmala_path))
-        UNICODE_FONT = 'HindiFont'
-        UNICODE_FONT_BOLD = 'HindiFont'
-        print("✅ Nirmala font registered - Hindi text will display correctly")
-    elif os.path.exists(nirmala_ttc_path):
-        # For .ttc (TrueType Collection), specify subfont index
-        pdfmetrics.registerFont(TTFont('HindiFont', nirmala_ttc_path, subfontIndex=0))
-        UNICODE_FONT = 'HindiFont'
-        UNICODE_FONT_BOLD = 'HindiFont'
-        print("✅ Nirmala font (TTC) registered - Hindi text will display correctly")
-    else:
-        # Try Arial Unicode MS
-        arial_unicode_path = 'C:\\Windows\\Fonts\\ARIALUNI.TTF'
-        if os.path.exists(arial_unicode_path):
-            pdfmetrics.registerFont(TTFont('HindiFont', arial_unicode_path))
-            UNICODE_FONT = 'HindiFont'
-            UNICODE_FONT_BOLD = 'HindiFont'
-            print("✅ Arial Unicode font registered - Hindi text will display correctly")
-        else:
-            print("⚠️ Unicode fonts not found - Hindi text may show as blocks")
-            print("⚠️ Install Nirmala UI or Arial Unicode MS font for proper Hindi display")
+    font_registered = False
+    
+    for font_path, font_name in fonts_to_try:
+        if os.path.exists(font_path):
+            try:
+                if font_path.endswith('.ttc'):
+                    # For TTC files, try different subfont indices
+                    for subfont_idx in [0, 1, 2]:
+                        try:
+                            pdfmetrics.registerFont(TTFont('HindiFont', font_path, subfontIndex=subfont_idx))
+                            UNICODE_FONT = 'HindiFont'
+                            UNICODE_FONT_BOLD = 'HindiFont'
+                            print(f"✅ {font_name} font registered (subfont {subfont_idx}) - Hindi text supported")
+                            font_registered = True
+                            break
+                        except:
+                            continue
+                else:
+                    pdfmetrics.registerFont(TTFont('HindiFont', font_path))
+                    UNICODE_FONT = 'HindiFont'
+                    UNICODE_FONT_BOLD = 'HindiFont'
+                    print(f"✅ {font_name} font registered - Unicode text supported")
+                    font_registered = True
+                
+                if font_registered:
+                    break
+            except Exception as font_error:
+                print(f"⚠️ Could not register {font_name}: {font_error}")
+                continue
+    
+    if not font_registered:
+        print("⚠️ No Unicode fonts found - Hindi text may show as blocks")
+        print("⚠️ Using Helvetica as fallback")
+
 except Exception as e:
-    print(f"⚠️ Error registering Unicode fonts: {e}")
+    print(f"❌ Error during font registration: {e}")
     print("⚠️ Falling back to Helvetica - Hindi text may not display correctly")
 
 
@@ -67,10 +84,11 @@ def generate_order_pdf(order_data, filename="invoice.pdf"):
         elements = []
         styles = getSampleStyleSheet()
         
-        # Custom styles
+        # Custom styles with Unicode font support
         title_style = ParagraphStyle(
             'CustomTitle',
             parent=styles['Heading1'],
+            fontName=UNICODE_FONT,
             fontSize=24,
             textColor=colors.HexColor('#FFD700'),
             spaceAfter=30,
@@ -80,6 +98,7 @@ def generate_order_pdf(order_data, filename="invoice.pdf"):
         heading_style = ParagraphStyle(
             'CustomHeading',
             parent=styles['Heading2'],
+            fontName=UNICODE_FONT,
             fontSize=14,
             textColor=colors.HexColor('#D2691E'),
             spaceAfter=12
@@ -234,10 +253,11 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
         elements = []
         styles = getSampleStyleSheet()
         
-        # Custom styles
+        # Custom styles with Unicode font support
         title_style = ParagraphStyle(
             'CustomTitle',
             parent=styles['Heading1'],
+            fontName=UNICODE_FONT,
             fontSize=22,
             textColor=colors.HexColor('#9333EA'),
             spaceAfter=20,
@@ -247,6 +267,7 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
         subtitle_style = ParagraphStyle(
             'SubTitle',
             parent=styles['Normal'],
+            fontName=UNICODE_FONT,
             fontSize=11,
             textColor=colors.HexColor('#666666'),
             spaceAfter=15,
@@ -256,6 +277,7 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
         section_header_style = ParagraphStyle(
             'SectionHeader',
             parent=styles['Heading2'],
+            fontName=UNICODE_FONT_BOLD,
             fontSize=14,
             textColor=colors.HexColor('#9333EA'),
             spaceBefore=15,
@@ -343,9 +365,13 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
         # Create sweets table
         sweets_data = [['#', 'Sweet Name', 'Quantity', 'Unit', 'Total Amount']]
         for idx, (key, sweet) in enumerate(sorted(sweets_sold.items(), key=lambda x: x[1]['total'], reverse=True), 1):
+            # Debug: Check text encoding
+            sweet_name = sweet['name']
+            print(f"   Sweet #{idx}: {sweet_name} (type: {type(sweet_name)}, repr: {repr(sweet_name)})")
+            
             sweets_data.append([
                 str(idx),
-                sweet['name'],
+                sweet_name,
                 f"{sweet['quantity']:.2f}",
                 sweet['unit'],
                 f"₹{sweet['total']:,.2f}"
