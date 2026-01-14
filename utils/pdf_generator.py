@@ -4,8 +4,46 @@ from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from datetime import datetime
 import os
+
+# Register Unicode-compatible fonts for Hindi/Devanagari support
+UNICODE_FONT = 'Helvetica'
+UNICODE_FONT_BOLD = 'Helvetica-Bold'
+
+try:
+    # Try Nirmala UI (Windows 10/11 Hindi font) - best option
+    nirmala_path = 'C:\\Windows\\Fonts\\Nirmala.ttf'
+    nirmala_ttc_path = 'C:\\Windows\\Fonts\\Nirmala.ttc'
+    
+    if os.path.exists(nirmala_path):
+        pdfmetrics.registerFont(TTFont('HindiFont', nirmala_path))
+        UNICODE_FONT = 'HindiFont'
+        UNICODE_FONT_BOLD = 'HindiFont'
+        print("✅ Nirmala font registered - Hindi text will display correctly")
+    elif os.path.exists(nirmala_ttc_path):
+        # For .ttc (TrueType Collection), specify subfont index
+        pdfmetrics.registerFont(TTFont('HindiFont', nirmala_ttc_path, subfontIndex=0))
+        UNICODE_FONT = 'HindiFont'
+        UNICODE_FONT_BOLD = 'HindiFont'
+        print("✅ Nirmala font (TTC) registered - Hindi text will display correctly")
+    else:
+        # Try Arial Unicode MS
+        arial_unicode_path = 'C:\\Windows\\Fonts\\ARIALUNI.TTF'
+        if os.path.exists(arial_unicode_path):
+            pdfmetrics.registerFont(TTFont('HindiFont', arial_unicode_path))
+            UNICODE_FONT = 'HindiFont'
+            UNICODE_FONT_BOLD = 'HindiFont'
+            print("✅ Arial Unicode font registered - Hindi text will display correctly")
+        else:
+            print("⚠️ Unicode fonts not found - Hindi text may show as blocks")
+            print("⚠️ Install Nirmala UI or Arial Unicode MS font for proper Hindi display")
+except Exception as e:
+    print(f"⚠️ Error registering Unicode fonts: {e}")
+    print("⚠️ Falling back to Helvetica - Hindi text may not display correctly")
+
 
 def generate_order_pdf(order_data, filename="invoice.pdf"):
     """
@@ -75,8 +113,8 @@ def generate_order_pdf(order_data, filename="invoice.pdf"):
         
         order_table = Table(order_info, colWidths=[2*inch, 4*inch])
         order_table.setStyle(TableStyle([
-            ('FONT', (0, 0), (0, -1), 'Helvetica-Bold'),
-            ('FONT', (1, 0), (-1, -1), 'Helvetica'),
+            ('FONT', (0, 0), (0, -1), UNICODE_FONT_BOLD),
+            ('FONT', (1, 0), (-1, -1), UNICODE_FONT),
             ('FONTSIZE', (0, 0), (-1, -1), 10),
             ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#D2691E')),
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
@@ -121,18 +159,18 @@ def generate_order_pdf(order_data, filename="invoice.pdf"):
             # Header row
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#FFD700')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
-            ('FONT', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONT', (0, 0), (-1, 0), UNICODE_FONT_BOLD),
             ('FONTSIZE', (0, 0), (-1, 0), 11),
             ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
             
             # Data rows
-            ('FONT', (0, 1), (-1, -2), 'Helvetica'),
+            ('FONT', (0, 1), (-1, -2), UNICODE_FONT),
             ('FONTSIZE', (0, 1), (-1, -2), 10),
             ('ALIGN', (0, 1), (0, -1), 'CENTER'),
             ('ALIGN', (2, 1), (-1, -1), 'RIGHT'),
             
             # Total row
-            ('FONT', (0, -1), (-1, -1), 'Helvetica-Bold'),
+            ('FONT', (0, -1), (-1, -1), UNICODE_FONT_BOLD),
             ('FONTSIZE', (0, -1), (-1, -1), 12),
             ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#FFF8DC')),
             ('TEXTCOLOR', (0, -1), (-1, -1), colors.HexColor('#D2691E')),
@@ -260,10 +298,10 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
         summary_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#9333EA')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('FONT', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONT', (0, 0), (-1, 0), UNICODE_FONT_BOLD),
             ('FONTSIZE', (0, 0), (-1, 0), 10),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONT', (0, 1), (-1, 1), 'Helvetica-Bold'),
+            ('FONT', (0, 1), (-1, 1), UNICODE_FONT_BOLD),
             ('FONTSIZE', (0, 1), (-1, 1), 12),
             ('BACKGROUND', (0, 1), (-1, 1), colors.HexColor('#F3E8FF')),
             ('TEXTCOLOR', (3, 1), (3, 1), colors.HexColor('#DC2626')),
@@ -321,16 +359,16 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
         sweets_table_style = [
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#EC4899')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('FONT', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONT', (0, 0), (-1, 0), UNICODE_FONT_BOLD),
             ('FONTSIZE', (0, 0), (-1, 0), 10),
             ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-            ('FONT', (0, 1), (-1, -2), 'Helvetica'),
+            ('FONT', (0, 1), (-1, -2), UNICODE_FONT),
             ('FONTSIZE', (0, 1), (-1, -2), 9),
             ('ALIGN', (0, 1), (0, -1), 'CENTER'),
             ('ALIGN', (2, 1), (-1, -1), 'RIGHT'),
             # Grand total row
             ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#FDF2F8')),
-            ('FONT', (0, -1), (-1, -1), 'Helvetica-Bold'),
+            ('FONT', (0, -1), (-1, -1), UNICODE_FONT_BOLD),
             ('FONTSIZE', (0, -1), (-1, -1), 10),
             ('TEXTCOLOR', (0, -1), (-1, -1), colors.HexColor('#9333EA')),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
@@ -388,10 +426,10 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
         customer_table_style = [
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#9333EA')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('FONT', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONT', (0, 0), (-1, 0), UNICODE_FONT_BOLD),
             ('FONTSIZE', (0, 0), (-1, 0), 8),
             ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-            ('FONT', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONT', (0, 1), (-1, -1), UNICODE_FONT),
             ('FONTSIZE', (0, 1), (-1, -1), 8),
             ('ALIGN', (0, 1), (0, -1), 'CENTER'),
             ('ALIGN', (5, 1), (7, -1), 'RIGHT'),
@@ -411,7 +449,7 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
             due = order.get('total', 0) - order.get('advancePaid', 0)
             if due > 0:
                 customer_table_style.append(('TEXTCOLOR', (7, i), (7, i), colors.HexColor('#DC2626')))
-                customer_table_style.append(('FONT', (7, i), (7, i), 'Helvetica-Bold'))
+                customer_table_style.append(('FONT', (7, i), (7, i), UNICODE_FONT_BOLD))
         
         customer_table.setStyle(TableStyle(customer_table_style))
         elements.append(customer_table)
