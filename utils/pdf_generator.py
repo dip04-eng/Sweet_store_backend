@@ -15,54 +15,23 @@ UNICODE_FONT = 'Helvetica'
 UNICODE_FONT_BOLD = 'Helvetica-Bold'
 
 try:
-    # Try Nirmala.ttc with all possible subfont indices
+    # Use Nirmala.ttc directly - subfont 0 (Nirmala UI Regular) has full Unicode support
+    # including Hindi (Devanagari script) and Indian Rupee symbol (₹)
     nirmala_ttc = 'C:\\Windows\\Fonts\\Nirmala.ttc'
     
     if os.path.exists(nirmala_ttc):
-        font_registered = False
-        # Try all possible subfont indices (0-10)
-        for idx in range(11):
-            try:
-                pdfmetrics.registerFont(TTFont('HindiFont', nirmala_ttc, subfontIndex=idx))
-                # Test if font was registered successfully
-                UNICODE_FONT = 'HindiFont'
-                UNICODE_FONT_BOLD = 'HindiFont'
-                print(f"✅ Nirmala UI font registered (subfont index {idx}) - Hindi text will display correctly")
-                font_registered = True
-                break
-            except Exception as e:
-                continue
-        
-        if not font_registered:
-            raise Exception("Could not register any subfont from Nirmala.ttc")
+        # Register the regular font (subfont 0)
+        pdfmetrics.registerFont(TTFont('HindiFont', nirmala_ttc, subfontIndex=0))
+        UNICODE_FONT = 'HindiFont'
+        UNICODE_FONT_BOLD = 'HindiFont'
+        print(f"✅ Nirmala UI font registered (TTC subfont 0)")
+        print("   ✅ Full support: Hindi (Devanagari), Rupee symbol (₹), Latin characters")
     else:
-        # Fallback: Try other system fonts
-        fonts_to_try = [
-            ('C:\\Windows\\Fonts\\seguiemj.ttf', 'Segoe UI Emoji'),
-            ('C:\\Windows\\Fonts\\calibri.ttf', 'Calibri'),
-            ('C:\\Windows\\Fonts\\arial.ttf', 'Arial'),
-        ]
-        
-        font_registered = False
-        for font_path, font_name in fonts_to_try:
-            if os.path.exists(font_path):
-                try:
-                    pdfmetrics.registerFont(TTFont('HindiFont', font_path))
-                    UNICODE_FONT = 'HindiFont'
-                    UNICODE_FONT_BOLD = 'HindiFont'
-                    print(f"✅ {font_name} font registered - Limited Unicode support")
-                    font_registered = True
-                    break
-                except Exception as e:
-                    continue
-        
-        if not font_registered:
-            print("⚠️ No Unicode fonts found - Hindi text may show as blocks")
-            print("⚠️ Please install Noto Sans Devanagari font from https://fonts.google.com/noto/specimen/Noto+Sans+Devanagari")
+        raise Exception("Nirmala.ttc not found - Hindi and Rupee symbol will not display")
 
 except Exception as e:
     print(f"❌ Error during font registration: {e}")
-    print("⚠️ Falling back to Helvetica - Hindi text will show as blocks")
+    print("⚠️ Falling back to Helvetica - Hindi text and rupee symbol will show as blocks")
 
 
 def generate_order_pdf(order_data, filename="invoice.pdf"):
