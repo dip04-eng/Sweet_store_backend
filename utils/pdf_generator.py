@@ -15,51 +15,54 @@ UNICODE_FONT = 'Helvetica'
 UNICODE_FONT_BOLD = 'Helvetica-Bold'
 
 try:
-    # List of fonts to try (in order of preference)
-    fonts_to_try = [
-        ('C:\\Windows\\Fonts\\seguiemj.ttf', 'Segoe UI Emoji'),  # Has good Unicode support
-        ('C:\\Windows\\Fonts\\calibri.ttf', 'Calibri'),  # Better Unicode than Helvetica
-        ('C:\\Windows\\Fonts\\arial.ttf', 'Arial'),  # Basic Unicode support
-        ('C:\\Windows\\Fonts\\Nirmala.ttc', 'NirmalaUI'),  # Hindi-specific (TTC might have issues)
-    ]
+    # Try Nirmala.ttc with all possible subfont indices
+    nirmala_ttc = 'C:\\Windows\\Fonts\\Nirmala.ttc'
     
-    font_registered = False
-    
-    for font_path, font_name in fonts_to_try:
-        if os.path.exists(font_path):
+    if os.path.exists(nirmala_ttc):
+        font_registered = False
+        # Try all possible subfont indices (0-10)
+        for idx in range(11):
             try:
-                if font_path.endswith('.ttc'):
-                    # For TTC files, try different subfont indices
-                    for subfont_idx in [0, 1, 2]:
-                        try:
-                            pdfmetrics.registerFont(TTFont('HindiFont', font_path, subfontIndex=subfont_idx))
-                            UNICODE_FONT = 'HindiFont'
-                            UNICODE_FONT_BOLD = 'HindiFont'
-                            print(f"✅ {font_name} font registered (subfont {subfont_idx}) - Hindi text supported")
-                            font_registered = True
-                            break
-                        except:
-                            continue
-                else:
+                pdfmetrics.registerFont(TTFont('HindiFont', nirmala_ttc, subfontIndex=idx))
+                # Test if font was registered successfully
+                UNICODE_FONT = 'HindiFont'
+                UNICODE_FONT_BOLD = 'HindiFont'
+                print(f"✅ Nirmala UI font registered (subfont index {idx}) - Hindi text will display correctly")
+                font_registered = True
+                break
+            except Exception as e:
+                continue
+        
+        if not font_registered:
+            raise Exception("Could not register any subfont from Nirmala.ttc")
+    else:
+        # Fallback: Try other system fonts
+        fonts_to_try = [
+            ('C:\\Windows\\Fonts\\seguiemj.ttf', 'Segoe UI Emoji'),
+            ('C:\\Windows\\Fonts\\calibri.ttf', 'Calibri'),
+            ('C:\\Windows\\Fonts\\arial.ttf', 'Arial'),
+        ]
+        
+        font_registered = False
+        for font_path, font_name in fonts_to_try:
+            if os.path.exists(font_path):
+                try:
                     pdfmetrics.registerFont(TTFont('HindiFont', font_path))
                     UNICODE_FONT = 'HindiFont'
                     UNICODE_FONT_BOLD = 'HindiFont'
-                    print(f"✅ {font_name} font registered - Unicode text supported")
+                    print(f"✅ {font_name} font registered - Limited Unicode support")
                     font_registered = True
-                
-                if font_registered:
                     break
-            except Exception as font_error:
-                print(f"⚠️ Could not register {font_name}: {font_error}")
-                continue
-    
-    if not font_registered:
-        print("⚠️ No Unicode fonts found - Hindi text may show as blocks")
-        print("⚠️ Using Helvetica as fallback")
+                except Exception as e:
+                    continue
+        
+        if not font_registered:
+            print("⚠️ No Unicode fonts found - Hindi text may show as blocks")
+            print("⚠️ Please install Noto Sans Devanagari font from https://fonts.google.com/noto/specimen/Noto+Sans+Devanagari")
 
 except Exception as e:
     print(f"❌ Error during font registration: {e}")
-    print("⚠️ Falling back to Helvetica - Hindi text may not display correctly")
+    print("⚠️ Falling back to Helvetica - Hindi text will show as blocks")
 
 
 def generate_order_pdf(order_data, filename="invoice.pdf"):
