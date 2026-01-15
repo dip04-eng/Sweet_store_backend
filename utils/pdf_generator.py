@@ -19,24 +19,25 @@ try:
     script_dir = os.path.dirname(os.path.abspath(__file__))
     backend_dir = os.path.dirname(script_dir)
     
-    # Try DejaVu Sans first (best reportlab compatibility)
-    dejavu_font_path = os.path.join(backend_dir, 'DejaVuSans.ttf')
+    # Use Noto Sans - properly supports Hindi, Rupee symbol, and all Latin characters
+    noto_font_path = os.path.join(backend_dir, 'NotoSans-Regular.ttf')
     
-    if os.path.exists(dejavu_font_path):
-        pdfmetrics.registerFont(TTFont('UnicodeFont', dejavu_font_path))
-        UNICODE_FONT = 'UnicodeFont'
-        UNICODE_FONT_BOLD = 'UnicodeFont'
-        print(f"✅ DejaVu Sans font registered")
-        print("   ✅ Full support: Hindi (देवनागरी), Rupee symbol (₹), Latin, Numbers")
-    elif os.path.exists(os.path.join(backend_dir, 'NotoSans-Regular.ttf')):
-        # Fallback to Noto Sans
-        pdfmetrics.registerFont(TTFont('UnicodeFont', os.path.join(backend_dir, 'NotoSans-Regular.ttf')))
+    if os.path.exists(noto_font_path):
+        pdfmetrics.registerFont(TTFont('UnicodeFont', noto_font_path))
         UNICODE_FONT = 'UnicodeFont'
         UNICODE_FONT_BOLD = 'UnicodeFont'
         print(f"✅ Noto Sans font registered")
-        print("   ✅ Full support: Hindi, Latin, Numbers")
+        print("   ✅ Full support: Hindi (देवनागरी), Rupee symbol (₹), Latin, Numbers")
     else:
-        raise Exception("No Unicode font available - please run download_dejavu.py")
+        # Fallback to Nirmala if Noto Sans not found
+        nirmala_ttc = 'C:\\Windows\\Fonts\\Nirmala.ttc'
+        if os.path.exists(nirmala_ttc):
+            pdfmetrics.registerFont(TTFont('UnicodeFont', nirmala_ttc, subfontIndex=0))
+            UNICODE_FONT = 'UnicodeFont'
+            UNICODE_FONT_BOLD = 'UnicodeFont'
+            print("⚠️ Using Nirmala.ttc (may have rendering issues)")
+        else:
+            raise Exception("No Unicode font available")
 
 except Exception as e:
     print(f"❌ Error during font registration: {e}")
@@ -266,7 +267,7 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
         )
         
         # Title
-        title = Paragraph("■ SWEET STORE - Sales Statement", title_style)
+        title = Paragraph("🍬 SWEET STORE - Sales Statement", title_style)
         elements.append(title)
         
         # Filter info subtitle
@@ -319,7 +320,7 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
         elements.append(Spacer(1, 0.3*inch))
         
         # ===== TOTAL SWEETS SOLD SECTION =====
-        elements.append(Paragraph("■ Total Sweets Sold", section_header_style))
+        elements.append(Paragraph("📦 Total Sweets Sold", section_header_style))
         
         # Aggregate all sweets sold
         sweets_sold = {}
@@ -395,7 +396,7 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
         elements.append(Spacer(1, 0.3*inch))
         
         # ===== CUSTOMER DETAILS SECTION =====
-        elements.append(Paragraph("■ Customer Order Details", section_header_style))
+        elements.append(Paragraph("👥 Customer Order Details", section_header_style))
         
         # Customer orders table
         customer_data = [['#', 'Customer Name', 'Mobile', 'Order Date', 'Items', 'Total', 'Paid', 'Due']]
