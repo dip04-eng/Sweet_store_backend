@@ -408,11 +408,17 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
             if order_date and 'T' in str(order_date):
                 order_date = order_date.split('T')[0]
             
-            # Get items summary
+            # Get items summary - format each item on a new line
             items = order.get('items', [])
-            items_summary = ', '.join([f"{item.get('sweetName', '')}({item.get('quantity', 0)})" for item in items[:2]])
-            if len(items) > 2:
-                items_summary += f" +{len(items)-2} more"
+            items_list = []
+            for item in items[:3]:  # Show up to 3 items
+                sweet_name = item.get('sweetName', '')
+                quantity = item.get('quantity', 0)
+                items_list.append(f"{sweet_name}({quantity})")
+            
+            items_summary = '<br/>'.join(items_list)
+            if len(items) > 3:
+                items_summary += f"<br/>+{len(items)-3} more"
             
             total = order.get('total', 0)
             advance = order.get('advancePaid', 0)
@@ -423,7 +429,7 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
                 customer[:20],
                 mobile,
                 order_date,
-                items_summary[:30],
+                Paragraph(items_summary, ParagraphStyle('ItemsList', fontName=UNICODE_FONT, fontSize=7, leading=10)),
                 f"₹{total:,.0f}",
                 f"₹{advance:,.0f}",
                 f"₹{due:,.0f}"
