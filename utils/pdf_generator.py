@@ -15,39 +15,33 @@ UNICODE_FONT = 'Helvetica'
 UNICODE_FONT_BOLD = 'Helvetica-Bold'
 
 try:
-    # Try multiple Windows system fonts that support Rupee symbol (₹) and Hindi
-    fonts_to_try = [
-        ('C:\\Windows\\Fonts\\mangal.ttf', 'Mangal', 'TTF'),
-        ('C:\\Windows\\Fonts\\Nirmala.ttc', 'NirmalaUI', 'TTC'),
-    ]
+    # Get the directory where this script is located
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    backend_dir = os.path.dirname(script_dir)
     
-    font_registered = False
-    for font_path, font_name, font_type in fonts_to_try:
-        if os.path.exists(font_path):
-            try:
-                if font_type == 'TTC':
-                    # Try TTC file with subfont index 0
-                    pdfmetrics.registerFont(TTFont('HindiFont', font_path, subfontIndex=0))
-                else:
-                    # Regular TTF file
-                    pdfmetrics.registerFont(TTFont('HindiFont', font_path))
-                
-                UNICODE_FONT = 'HindiFont'
-                UNICODE_FONT_BOLD = 'HindiFont'
-                print(f"✅ {font_name} font registered successfully")
-                print(f"   ✅ Full support: Hindi (देवनागरी), Rupee symbol (₹), Latin characters")
-                font_registered = True
-                break
-            except Exception as e:
-                print(f"⚠️ Failed to register {font_name}: {str(e)[:50]}")
-                continue
+    # Use Noto Sans - properly supports Hindi, Rupee symbol, and all Latin characters
+    noto_font_path = os.path.join(backend_dir, 'NotoSans-Regular.ttf')
     
-    if not font_registered:
-        raise Exception("No compatible Unicode font found - Rupee symbol and Hindi will show as blocks")
+    if os.path.exists(noto_font_path):
+        pdfmetrics.registerFont(TTFont('UnicodeFont', noto_font_path))
+        UNICODE_FONT = 'UnicodeFont'
+        UNICODE_FONT_BOLD = 'UnicodeFont'
+        print(f"✅ Noto Sans font registered")
+        print("   ✅ Full support: Hindi (देवनागरी), Rupee symbol (₹), Latin, Numbers")
+    else:
+        # Fallback to Nirmala if Noto Sans not found
+        nirmala_ttc = 'C:\\Windows\\Fonts\\Nirmala.ttc'
+        if os.path.exists(nirmala_ttc):
+            pdfmetrics.registerFont(TTFont('UnicodeFont', nirmala_ttc, subfontIndex=0))
+            UNICODE_FONT = 'UnicodeFont'
+            UNICODE_FONT_BOLD = 'UnicodeFont'
+            print("⚠️ Using Nirmala.ttc (may have rendering issues)")
+        else:
+            raise Exception("No Unicode font available")
 
 except Exception as e:
     print(f"❌ Error during font registration: {e}")
-    print("⚠️ Using Helvetica - Hindi text and rupee symbol will show as blocks")
+    print("⚠️ Hindi text and rupee symbol will show as blocks")
 
 
 def generate_order_pdf(order_data, filename="invoice.pdf"):
