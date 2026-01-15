@@ -15,23 +15,33 @@ UNICODE_FONT = 'Helvetica'
 UNICODE_FONT_BOLD = 'Helvetica-Bold'
 
 try:
-    # Use Nirmala.ttc directly - subfont 0 (Nirmala UI Regular) has full Unicode support
-    # including Hindi (Devanagari script) and Indian Rupee symbol (₹)
-    nirmala_ttc = 'C:\\Windows\\Fonts\\Nirmala.ttc'
+    # Get the directory where this script is located
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    backend_dir = os.path.dirname(script_dir)
     
-    if os.path.exists(nirmala_ttc):
-        # Register the regular font (subfont 0)
-        pdfmetrics.registerFont(TTFont('HindiFont', nirmala_ttc, subfontIndex=0))
-        UNICODE_FONT = 'HindiFont'
-        UNICODE_FONT_BOLD = 'HindiFont'
-        print(f"✅ Nirmala UI font registered (TTC subfont 0)")
-        print("   ✅ Full support: Hindi (Devanagari), Rupee symbol (₹), Latin characters")
+    # Use Noto Sans - properly supports Hindi, Rupee symbol, and all Latin characters
+    noto_font_path = os.path.join(backend_dir, 'NotoSans-Regular.ttf')
+    
+    if os.path.exists(noto_font_path):
+        pdfmetrics.registerFont(TTFont('UnicodeFont', noto_font_path))
+        UNICODE_FONT = 'UnicodeFont'
+        UNICODE_FONT_BOLD = 'UnicodeFont'
+        print(f"✅ Noto Sans font registered")
+        print("   ✅ Full support: Hindi (देवनागरी), Rupee symbol (₹), Latin, Numbers")
     else:
-        raise Exception("Nirmala.ttc not found - Hindi and Rupee symbol will not display")
+        # Fallback to Nirmala if Noto Sans not found
+        nirmala_ttc = 'C:\\Windows\\Fonts\\Nirmala.ttc'
+        if os.path.exists(nirmala_ttc):
+            pdfmetrics.registerFont(TTFont('UnicodeFont', nirmala_ttc, subfontIndex=0))
+            UNICODE_FONT = 'UnicodeFont'
+            UNICODE_FONT_BOLD = 'UnicodeFont'
+            print("⚠️ Using Nirmala.ttc (may have rendering issues)")
+        else:
+            raise Exception("No Unicode font available")
 
 except Exception as e:
     print(f"❌ Error during font registration: {e}")
-    print("⚠️ Falling back to Helvetica - Hindi text and rupee symbol will show as blocks")
+    print("⚠️ Hindi text and rupee symbol will show as blocks")
 
 
 def generate_order_pdf(order_data, filename="invoice.pdf"):
