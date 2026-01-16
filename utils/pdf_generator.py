@@ -1,7 +1,7 @@
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.lib import colors
 from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 from reportlab.pdfbase import pdfmetrics
@@ -9,39 +9,152 @@ from reportlab.pdfbase.ttfonts import TTFont
 from datetime import datetime
 import os
 import sys
+import urllib.request
+import re
 
-# Register Unicode-compatible fonts for Hindi/Devanagari support
+# Font names for English and Hindi
+ENGLISH_FONT = 'Helvetica'
+HINDI_FONT = 'Helvetica'
 UNICODE_FONT = 'Helvetica'
 UNICODE_FONT_BOLD = 'Helvetica-Bold'
+
+def download_font(url, font_path, name):
+    """Download a font from URL"""
+    try:
+        print(f"📥 Downloading {name}...")
+        urllib.request.urlretrieve(url, font_path)
+        print(f"✅ {name} downloaded: {os.path.getsize(font_path)} bytes")
+        return True
+    except Exception as e:
+        print(f"❌ Failed to download {name}: {e}")
+        return False
+
+def has_devanagari(text):
+    """Check if text contains Devanagari (Hindi) characters"""
+    if not text:
+        return False
+    # Devanagari Unicode range: U+0900 to U+097F
+    return bool(re.search(r'[\u0900-\u097F]', str(text)))
+
+def format_mixed_text(text, english_font, hindi_font):
+    """Format text with appropriate fonts for English and Hindi parts"""
+    if not text:
+        return str(text)
+    
+    text = str(text)
+    result = []
+    current_text = ""
+    current_is_hindi = None
+    
+    for char in text:
+        is_hindi = bool(re.match(r'[\u0900-\u097F]', char))
+        
+        if current_is_hindi is None:
+            current_is_hindi = is_hindi
+            current_text = char
+        elif is_hindi == current_is_hindi:
+            current_text += char
+        else:
+            # Switch font
+            if current_is_hindi:
+                result.append(f'<font name="{hindi_font}">{current_text}</font>')
+            else:
+                result.append(f'<font name="{english_font}">{current_text}</font>')
+            current_text = char
+            current_is_hindi = is_hindi
+    
+    # Add remaining text
+    if current_text:
+        if current_is_hindi:
+            result.append(f'<font name="{hindi_font}">{current_text}</font>')
+        else:
+            result.append(f'<font name="{english_font}">{current_text}</font>')
+    
+    return ''.join(result)
 
 try:
     # Get the directory where this script is located
     script_dir = os.path.dirname(os.path.abspath(__file__))
     backend_dir = os.path.dirname(script_dir)
     
-    # Use Noto Sans - properly supports Hindi, Rupee symbol, and all Latin characters
-    noto_font_path = os.path.join(backend_dir, 'NotoSans-Regular.ttf')
+    # Font file paths
+    noto_sans_path = os.path.join(backend_dir, 'NotoSans-Regular.ttf')
+    noto_devanagari_path = os.path.join(backend_dir, 'NotoSansDevanagari.ttf')
     
-    if os.path.exists(noto_font_path):
-        pdfmetrics.registerFont(TTFont('UnicodeFont', noto_font_path))
-        UNICODE_FONT = 'UnicodeFont'
-        UNICODE_FONT_BOLD = 'UnicodeFont'
-        print(f"✅ Noto Sans font registered")
-        print("   ✅ Full support: Hindi (देवनागरी), Rupee symbol (₹), Latin, Numbers")
-    else:
-        # Fallback to Nirmala if Noto Sans not found
-        nirmala_ttc = 'C:\\Windows\\Fonts\\Nirmala.ttc'
-        if os.path.exists(nirmala_ttc):
-            pdfmetrics.registerFont(TTFont('UnicodeFont', nirmala_ttc, subfontIndex=0))
-            UNICODE_FONT = 'UnicodeFont'
-            UNICODE_FONT_BOLD = 'UnicodeFont'
-            print("⚠️ Using Nirmala.ttc (may have rendering issues)")
-        else:
-            raise Exception("No Unicode font available")
+    english_registered = False
+    hindi_registered = False
+    
+    # Register NotoSans for English/Latin text
+    if os.path.exists(noto_sans_path):
+        try:
+            pdfmetrics.registerFont(TTFont('NotoSans', noto_sans_path))
+            ENGLISH_FONT = 'NotoSans'
+            UNICODE_FONT = 'NotoSans'
+            UNICODE_FONT_BOLD = 'NotoSans'
+            english_registered = True
+            print(f"✅ NotoSans (English) font registered")
+        except Exception as e:
+            print(f"⚠️ Failed to register NotoSans: {e}")
+    
+    # Download NotoSans if not exists
+    if not english_registered:
+        noto_sans_url = "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSans/NotoSans-Regular.ttf"
+        if download_font(noto_sans_url, noto_sans_path, "NotoSans"):
+            try:
+                pdfmetrics.registerFont(TTFont('NotoSans', noto_sans_path))
+                ENGLISH_FONT = 'NotoSans'
+                UNICODE_FONT = 'NotoSans'
+                UNICODE_FONT_BOLD = 'NotoSans'
+                english_registered = True
+                print(f"✅ NotoSans (English) downloaded and registered")
+            except Exception as e:
+                print(f"⚠️ Failed to register downloaded NotoSans: {e}")
+    
+    # Register NotoSansDevanagari for Hindi text
+    if os.path.exists(noto_devanagari_path):
+        try:
+            pdfmetrics.registerFont(TTFont('NotoDevanagari', noto_devanagari_path))
+            HINDI_FONT = 'NotoDevanagari'
+            hindi_registered = True
+            print(f"✅ NotoSansDevanagari (Hindi) font registered")
+        except Exception as e:
+            print(f"⚠️ Failed to register NotoSansDevanagari: {e}")
+    
+    # Download NotoSansDevanagari if not exists
+    if not hindi_registered:
+        noto_deva_url = "https://raw.githubusercontent.com/googlefonts/noto-fonts/main/hinted/ttf/NotoSansDevanagari/NotoSansDevanagari-Regular.ttf"
+        if download_font(noto_deva_url, noto_devanagari_path, "NotoSansDevanagari"):
+            try:
+                pdfmetrics.registerFont(TTFont('NotoDevanagari', noto_devanagari_path))
+                HINDI_FONT = 'NotoDevanagari'
+                hindi_registered = True
+                print(f"✅ NotoSansDevanagari (Hindi) downloaded and registered")
+            except Exception as e:
+                print(f"⚠️ Failed to register downloaded NotoSansDevanagari: {e}")
+    
+    # Fallback to Windows fonts if needed
+    if not english_registered or not hindi_registered:
+        nirmala_ttf = 'C:\\Windows\\Fonts\\Nirmala.ttf'
+        if os.path.exists(nirmala_ttf):
+            try:
+                pdfmetrics.registerFont(TTFont('Nirmala', nirmala_ttf))
+                if not english_registered:
+                    ENGLISH_FONT = 'Nirmala'
+                    UNICODE_FONT = 'Nirmala'
+                    UNICODE_FONT_BOLD = 'Nirmala'
+                if not hindi_registered:
+                    HINDI_FONT = 'Nirmala'
+                print("⚠️ Using Windows Nirmala font as fallback")
+            except Exception as e:
+                print(f"⚠️ Failed to register Nirmala: {e}")
+    
+    print(f"📝 Font setup complete:")
+    print(f"   English font: {ENGLISH_FONT}")
+    print(f"   Hindi font: {HINDI_FONT}")
 
 except Exception as e:
     print(f"❌ Error during font registration: {e}")
-    print("⚠️ Hindi text and rupee symbol will show as blocks")
+    print("⚠️ Hindi text and rupee symbol may show as blocks")
 
 
 def generate_order_pdf(order_data, filename="invoice.pdf"):
@@ -70,7 +183,7 @@ def generate_order_pdf(order_data, filename="invoice.pdf"):
         title_style = ParagraphStyle(
             'CustomTitle',
             parent=styles['Heading1'],
-            fontName=UNICODE_FONT,
+            fontName=ENGLISH_FONT,
             fontSize=24,
             textColor=colors.HexColor('#FFD700'),
             spaceAfter=30,
@@ -80,42 +193,110 @@ def generate_order_pdf(order_data, filename="invoice.pdf"):
         heading_style = ParagraphStyle(
             'CustomHeading',
             parent=styles['Heading2'],
-            fontName=UNICODE_FONT,
+            fontName=ENGLISH_FONT,
             fontSize=14,
             textColor=colors.HexColor('#D2691E'),
             spaceAfter=12
         )
         
-        # Title
-        title = Paragraph("🍬 SWEET STORE", title_style)
-        elements.append(title)
+        # Cell style for mixed fonts
+        cell_style = ParagraphStyle(
+            'CellStyle',
+            parent=styles['Normal'],
+            fontName=ENGLISH_FONT,
+            fontSize=10,
+            leading=12
+        )
         
+        # Add logos at top - hotel logo on left, name logo on right
+        try:
+            # Get logo paths from frontend public folder
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            backend_dir = os.path.dirname(script_dir)
+            project_dir = os.path.dirname(backend_dir)
+            hotel_logo_path = os.path.join(project_dir, 'Sweet_store_frontend', 'public', 'hotel_logo2-removebg-preview.png')
+            name_logo_path = os.path.join(project_dir, 'Sweet_store_frontend', 'public', 'Name.png')
+            
+            # Create logo table with two columns
+            logo_data = []
+            logo_row = []
+            
+            if os.path.exists(hotel_logo_path):
+                hotel_logo = Image(hotel_logo_path, width=1.5*inch, height=1.5*inch)
+                logo_row.append(hotel_logo)
+            else:
+                logo_row.append('')
+            
+            if os.path.exists(name_logo_path):
+                name_logo = Image(name_logo_path, width=2*inch, height=1*inch)
+                logo_row.append(name_logo)
+            else:
+                logo_row.append('')
+            
+            if logo_row:
+                logo_data.append(logo_row)
+                logo_table = Table(logo_data, colWidths=[1.6*inch, 2.1*inch])
+                logo_table.setStyle(TableStyle([
+                    ('ALIGN', (0, 0), (0, 0), 'RIGHT'),
+                    ('ALIGN', (1, 0), (1, 0), 'LEFT'),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                ]))
+                logo_table.hAlign = 'CENTER'
+                elements.append(logo_table)
+                elements.append(Spacer(1, 0.2*inch))
+        except Exception as e:
+            print(f"⚠️ Could not add logos: {e}")
+        
+        # Subtitle (removed title)
         subtitle = Paragraph("Order Invoice", styles['Heading2'])
         elements.append(subtitle)
         elements.append(Spacer(1, 0.3*inch))
         
         # Order Information
-        order_id = str(order_data.get('_id', 'N/A'))
+        # Get sequential order number from orderNumber field (set when order is created)
+        order_number = order_data.get('orderNumber', None)
+        if order_number:
+            order_id = f"{order_number:04d}"  # Format as 0001, 0002, etc.
+        else:
+            # Fallback: use MongoDB ObjectId
+            order_id = str(order_data.get('_id', 'N/A'))
         customer_name = order_data.get('customerName', 'N/A')
         mobile = order_data.get('mobile', 'N/A')
         address = order_data.get('address', 'N/A')
-        order_date = order_data.get('orderDate', 'N/A')
-        delivery_date = order_data.get('deliveryDate', 'N/A')
         
-        # Order details table
+        # Format dates as dd-mm-yyyy
+        order_date = order_data.get('orderDate', 'N/A')
+        if order_date != 'N/A':
+            try:
+                from datetime import datetime
+                date_obj = datetime.strptime(str(order_date).split('T')[0], '%Y-%m-%d')
+                order_date = date_obj.strftime('%d-%m-%Y')
+            except:
+                pass
+        
+        delivery_date = order_data.get('deliveryDate', 'N/A')
+        if delivery_date != 'N/A':
+            try:
+                from datetime import datetime
+                date_obj = datetime.strptime(str(delivery_date).split('T')[0], '%Y-%m-%d')
+                delivery_date = date_obj.strftime('%d-%m-%Y')
+            except:
+                pass
+        
+        # Order details table with Paragraphs for mixed font support
         order_info = [
-            ['Order ID:', order_id],
-            ['Customer Name:', customer_name],
-            ['Mobile:', mobile],
-            ['Address:', address],
-            ['Order Date:', order_date],
-            ['Delivery Date:', delivery_date]
+            [Paragraph('Order ID:', cell_style), Paragraph(order_id, cell_style)],
+            [Paragraph('Customer Name:', cell_style), Paragraph(format_mixed_text(customer_name, ENGLISH_FONT, HINDI_FONT), cell_style)],
+            [Paragraph('Mobile:', cell_style), Paragraph(mobile, cell_style)],
+            [Paragraph('Address:', cell_style), Paragraph(format_mixed_text(address, ENGLISH_FONT, HINDI_FONT), cell_style)],
+            [Paragraph('Order Date:', cell_style), Paragraph(order_date, cell_style)],
+            [Paragraph('Delivery Date:', cell_style), Paragraph(delivery_date, cell_style)]
         ]
         
         order_table = Table(order_info, colWidths=[2*inch, 4*inch])
         order_table.setStyle(TableStyle([
-            ('FONT', (0, 0), (0, -1), UNICODE_FONT_BOLD),
-            ('FONT', (1, 0), (-1, -1), UNICODE_FONT),
             ('FONTSIZE', (0, 0), (-1, -1), 10),
             ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#D2691E')),
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
@@ -131,9 +312,15 @@ def generate_order_pdf(order_data, filename="invoice.pdf"):
         elements.append(items_heading)
         elements.append(Spacer(1, 0.1*inch))
         
-        # Items table
+        # Items table with Paragraphs for mixed font support
         items = order_data.get('items', [])
-        items_data = [['#', 'Item Name', 'Quantity', 'Unit', 'Price', 'Total']]
+        items_data = [[
+            Paragraph('#', cell_style),
+            Paragraph('Item Name', cell_style),
+            Paragraph('Quantity', cell_style),
+            Paragraph('Price', cell_style),
+            Paragraph('Total', cell_style)
+        ]]
         
         for idx, item in enumerate(items, 1):
             sweet_name = item.get('sweetName', 'N/A')
@@ -142,36 +329,41 @@ def generate_order_pdf(order_data, filename="invoice.pdf"):
             price = item.get('price', 0)
             total = price * quantity
             
+            # Combine quantity and unit
+            quantity_with_unit = f"{quantity} {unit}"
+            
             items_data.append([
-                str(idx),
-                sweet_name,
-                f"{quantity}",
-                unit,
-                f"₹{price}",
-                f"₹{total:.2f}"
+                Paragraph(str(idx), cell_style),
+                Paragraph(format_mixed_text(sweet_name, ENGLISH_FONT, HINDI_FONT), cell_style),
+                Paragraph(quantity_with_unit, cell_style),
+                Paragraph(f"₹{price}", cell_style),
+                Paragraph(f"₹{total:.2f}", cell_style)
             ])
         
         # Add total row
         total_amount = order_data.get('total', 0)
-        items_data.append(['', '', '', '', 'Grand Total:', f"₹{total_amount}"])
+        items_data.append([
+            Paragraph('', cell_style),
+            Paragraph('', cell_style),
+            Paragraph('', cell_style),
+            Paragraph('Grand Total:', cell_style),
+            Paragraph(f"₹{total_amount}", cell_style)
+        ])
         
-        items_table = Table(items_data, colWidths=[0.5*inch, 2*inch, 1*inch, 0.8*inch, 1*inch, 1.2*inch])
+        items_table = Table(items_data, colWidths=[0.5*inch, 2.5*inch, 1.2*inch, 1*inch, 1.3*inch])
         items_table.setStyle(TableStyle([
             # Header row
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#FFD700')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
-            ('FONT', (0, 0), (-1, 0), UNICODE_FONT_BOLD),
             ('FONTSIZE', (0, 0), (-1, 0), 11),
             ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
             
             # Data rows
-            ('FONT', (0, 1), (-1, -2), UNICODE_FONT),
             ('FONTSIZE', (0, 1), (-1, -2), 10),
             ('ALIGN', (0, 1), (0, -1), 'CENTER'),
             ('ALIGN', (2, 1), (-1, -1), 'RIGHT'),
             
             # Total row
-            ('FONT', (0, -1), (-1, -1), UNICODE_FONT_BOLD),
             ('FONTSIZE', (0, -1), (-1, -1), 12),
             ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#FFF8DC')),
             ('TEXTCOLOR', (0, -1), (-1, -1), colors.HexColor('#D2691E')),
@@ -239,7 +431,7 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
         title_style = ParagraphStyle(
             'CustomTitle',
             parent=styles['Heading1'],
-            fontName=UNICODE_FONT,
+            fontName=ENGLISH_FONT,
             fontSize=22,
             textColor=colors.HexColor('#9333EA'),
             spaceAfter=20,
@@ -249,7 +441,7 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
         subtitle_style = ParagraphStyle(
             'SubTitle',
             parent=styles['Normal'],
-            fontName=UNICODE_FONT,
+            fontName=ENGLISH_FONT,
             fontSize=11,
             textColor=colors.HexColor('#666666'),
             spaceAfter=15,
@@ -259,32 +451,93 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
         section_header_style = ParagraphStyle(
             'SectionHeader',
             parent=styles['Heading2'],
-            fontName=UNICODE_FONT_BOLD,
+            fontName=ENGLISH_FONT,
             fontSize=14,
             textColor=colors.HexColor('#9333EA'),
             spaceBefore=15,
             spaceAfter=10
         )
         
-        # Title
-        title = Paragraph("🍬 SWEET STORE - Sales Statement", title_style)
-        elements.append(title)
+        # Add logos at top - hotel logo on left, name logo on right
+        try:
+            # Get logo paths from frontend public folder
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            backend_dir = os.path.dirname(script_dir)
+            project_dir = os.path.dirname(backend_dir)
+            hotel_logo_path = os.path.join(project_dir, 'Sweet_store_frontend', 'public', 'hotel_logo2-removebg-preview.png')
+            name_logo_path = os.path.join(project_dir, 'Sweet_store_frontend', 'public', 'Name.png')
+            
+            # Create logo table with two columns
+            logo_data = []
+            logo_row = []
+            
+            if os.path.exists(hotel_logo_path):
+                hotel_logo = Image(hotel_logo_path, width=1.5*inch, height=1.5*inch)
+                logo_row.append(hotel_logo)
+            else:
+                logo_row.append('')
+            
+            if os.path.exists(name_logo_path):
+                name_logo = Image(name_logo_path, width=2*inch, height=1*inch)
+                logo_row.append(name_logo)
+            else:
+                logo_row.append('')
+            
+            if logo_row:
+                logo_data.append(logo_row)
+                logo_table = Table(logo_data, colWidths=[1.6*inch, 2.1*inch])
+                logo_table.setStyle(TableStyle([
+                    ('ALIGN', (0, 0), (0, 0), 'RIGHT'),
+                    ('ALIGN', (1, 0), (1, 0), 'LEFT'),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                ]))
+                logo_table.hAlign = 'CENTER'
+                elements.append(logo_table)
+                elements.append(Spacer(1, 0.2*inch))
+        except Exception as e:
+            print(f"⚠️ Could not add logos: {e}")
         
-        # Filter info subtitle
-        filter_parts = []
-        if filters.get('statusFilter'):
-            filter_parts.append(f"Status: {filters['statusFilter']}")
-        if filters.get('dateFilter'):
-            filter_parts.append(f"Order Date: {filters['dateFilter']}")
-        if filters.get('pendingPayment'):
-            filter_parts.append("Delivered + Pending Payment")
+        # Sales Statement subtitle
+        sales_statement = Paragraph("Sales Statement", subtitle_style)
+        elements.append(sales_statement)
         
-        filter_text = " | ".join(filter_parts) if filter_parts else "All Orders"
-        subtitle = Paragraph(f"Filters: {filter_text}", subtitle_style)
-        elements.append(subtitle)
+        # # Filter info subtitle
+        # filter_parts = []
+        # if filters.get('statusFilter'):
+        #     filter_parts.append(f"Status: {filters['statusFilter']}")
+        # if filters.get('dateFilter'):
+        #     filter_parts.append(f"Order Date: {filters['dateFilter']}")
+        # if filters.get('pendingPayment'):
+        #     filter_parts.append("Delivered + Pending Payment")
         
-        generated_time = Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", subtitle_style)
-        elements.append(generated_time)
+        # filter_text = " | ".join(filter_parts) if filter_parts else "All Orders"
+        # subtitle = Paragraph(f"Filters: {filter_text}", subtitle_style)
+        # elements.append(subtitle)
+        
+        # Get date range from orders
+        date_range_text = "All Orders"
+        if orders:
+            order_dates = []
+            for order in orders:
+                order_date = order.get('orderDate', '')
+                if order_date:
+                    try:
+                        if 'T' in str(order_date):
+                            order_date = order_date.split('T')[0]
+                        date_obj = datetime.strptime(order_date, '%Y-%m-%d')
+                        order_dates.append(date_obj)
+                    except:
+                        pass
+            
+            if order_dates:
+                min_date = min(order_dates)
+                max_date = max(order_dates)
+                date_range_text = f"Date Range: {min_date.strftime('%d-%m-%Y')} to {max_date.strftime('%d-%m-%Y')}"
+        
+        date_range = Paragraph(date_range_text, subtitle_style)
+        elements.append(date_range)
         elements.append(Spacer(1, 0.2*inch))
         
         # ===== SUMMARY SECTION =====
@@ -292,6 +545,23 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
         total_amount = sum(order.get('total', 0) for order in orders)
         total_advance = sum(order.get('advancePaid', 0) for order in orders)
         total_due = total_amount - total_advance
+        
+        # Create paragraph style for table cells
+        cell_style = ParagraphStyle(
+            'CellStyle',
+            parent=styles['Normal'],
+            fontName=ENGLISH_FONT,
+            fontSize=10,
+            leading=12
+        )
+        
+        cell_style_bold = ParagraphStyle(
+            'CellStyleBold',
+            parent=styles['Normal'],
+            fontName=ENGLISH_FONT,
+            fontSize=12,
+            leading=14
+        )
         
         summary_data = [
             ['Total Orders', 'Total Amount', 'Advance Paid', 'Amount Due'],
@@ -302,10 +572,10 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
         summary_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#9333EA')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('FONT', (0, 0), (-1, 0), UNICODE_FONT_BOLD),
+            ('FONT', (0, 0), (-1, 0), ENGLISH_FONT),
             ('FONTSIZE', (0, 0), (-1, 0), 10),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONT', (0, 1), (-1, 1), UNICODE_FONT_BOLD),
+            ('FONT', (0, 1), (-1, 1), ENGLISH_FONT),
             ('FONTSIZE', (0, 1), (-1, 1), 12),
             ('BACKGROUND', (0, 1), (-1, 1), colors.HexColor('#F3E8FF')),
             ('TEXTCOLOR', (3, 1), (3, 1), colors.HexColor('#DC2626')),
@@ -344,39 +614,53 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
                 sweets_sold[key]['quantity'] += quantity
                 sweets_sold[key]['total'] += item_total
         
-        # Create sweets table
-        sweets_data = [['#', 'Sweet Name', 'Quantity', 'Unit', 'Total Amount']]
+        # Create sweets table with Paragraphs for mixed font support
+        header_row = [
+            Paragraph('#', cell_style),
+            Paragraph('Sweet Name', cell_style),
+            Paragraph('Quantity', cell_style),
+            Paragraph('Total Amount', cell_style)
+        ]
+        sweets_data = [header_row]
+        
         for idx, (key, sweet) in enumerate(sorted(sweets_sold.items(), key=lambda x: x[1]['total'], reverse=True), 1):
-            # Debug: Check text encoding
             sweet_name = sweet['name']
             print(f"   Sweet #{idx}: {sweet_name} (type: {type(sweet_name)}, repr: {repr(sweet_name)})")
             
+            # Use mixed font formatting for sweet names (English + Hindi)
+            mixed_name = format_mixed_text(sweet_name, ENGLISH_FONT, HINDI_FONT)
+            
+            # Combine quantity and unit in single column
+            quantity_with_unit = f"{sweet['quantity']:.2f} {sweet['unit']}"
+            
             sweets_data.append([
-                str(idx),
-                sweet_name,
-                f"{sweet['quantity']:.2f}",
-                sweet['unit'],
-                f"₹{sweet['total']:,.2f}"
+                Paragraph(str(idx), cell_style),
+                Paragraph(mixed_name, cell_style),
+                Paragraph(quantity_with_unit, cell_style),
+                Paragraph(f"₹{sweet['total']:,.2f}", cell_style)
             ])
         
         # Add grand total row
         grand_total_qty = sum(s['quantity'] for s in sweets_sold.values())
-        sweets_data.append(['', 'GRAND TOTAL', f"{grand_total_qty:.2f}", '', f"₹{total_amount:,.2f}"])
+        sweets_data.append([
+            Paragraph('', cell_style_bold),
+            Paragraph('GRAND TOTAL', cell_style_bold),
+            Paragraph(f"{grand_total_qty:.2f}", cell_style_bold),
+            Paragraph(f"₹{total_amount:,.2f}", cell_style_bold)
+        ])
         
-        sweets_table = Table(sweets_data, colWidths=[0.5*inch, 2.5*inch, 1*inch, 0.8*inch, 1.5*inch])
+        sweets_table = Table(sweets_data, colWidths=[0.5*inch, 2.5*inch, 1.5*inch, 1.5*inch])
         sweets_table_style = [
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#EC4899')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('FONT', (0, 0), (-1, 0), UNICODE_FONT_BOLD),
             ('FONTSIZE', (0, 0), (-1, 0), 10),
             ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-            ('FONT', (0, 1), (-1, -2), UNICODE_FONT),
             ('FONTSIZE', (0, 1), (-1, -2), 9),
             ('ALIGN', (0, 1), (0, -1), 'CENTER'),
-            ('ALIGN', (2, 1), (-1, -1), 'RIGHT'),
+            ('ALIGN', (2, 1), (2, -1), 'CENTER'),
+            ('ALIGN', (3, 1), (3, -1), 'RIGHT'),
             # Grand total row
             ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#FDF2F8')),
-            ('FONT', (0, -1), (-1, -1), UNICODE_FONT_BOLD),
             ('FONTSIZE', (0, -1), (-1, -1), 10),
             ('TEXTCOLOR', (0, -1), (-1, -1), colors.HexColor('#9333EA')),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
@@ -398,52 +682,72 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
         # ===== CUSTOMER DETAILS SECTION =====
         elements.append(Paragraph("👥 Customer Order Details", section_header_style))
         
-        # Customer orders table
-        customer_data = [['#', 'Customer Name', 'Mobile', 'Order Date', 'Items', 'Total', 'Paid', 'Due']]
+        # Sort orders by orderDate in ascending order
+        sorted_orders = sorted(orders, key=lambda x: x.get('orderDate', ''))
         
-        for idx, order in enumerate(orders, 1):
+        # Customer orders table with Paragraph headers
+        customer_data = [[
+            Paragraph('#', cell_style),
+            Paragraph('Customer Name', cell_style),
+            Paragraph('Mobile', cell_style),
+            Paragraph('Order Date', cell_style),
+            Paragraph('Items', cell_style),
+            Paragraph('Total', cell_style),
+            Paragraph('Paid', cell_style),
+            Paragraph('Due', cell_style)
+        ]]
+        
+        for idx, order in enumerate(sorted_orders, 1):
             customer = order.get('customerName', 'N/A')
             mobile = order.get('mobile', 'N/A')
             order_date = order.get('orderDate', 'N/A')
             if order_date and 'T' in str(order_date):
                 order_date = order_date.split('T')[0]
+            # Convert date format from yyyy-mm-dd to dd-mm-yyyy
+            if order_date != 'N/A':
+                try:
+                    date_obj = datetime.strptime(order_date, '%Y-%m-%d')
+                    order_date = date_obj.strftime('%d-%m-%Y')
+                except:
+                    pass  # Keep original if conversion fails
             
-            # Get items summary - format each item on a new line
+            # Get items summary - format each item on a new line (show all items)
             items = order.get('items', [])
             items_list = []
-            for item in items[:3]:  # Show up to 3 items
+            for item in items:  # Show all items
                 sweet_name = item.get('sweetName', '')
                 quantity = item.get('quantity', 0)
-                items_list.append(f"{sweet_name}({quantity})")
+                unit = item.get('unit', 'kg')
+                # Apply mixed font to sweet name with quantity and unit
+                mixed_name = format_mixed_text(f"{sweet_name} - {quantity} {unit}", ENGLISH_FONT, HINDI_FONT)
+                items_list.append(mixed_name)
             
             items_summary = '<br/>'.join(items_list)
-            if len(items) > 3:
-                items_summary += f"<br/>+{len(items)-3} more"
             
             total = order.get('total', 0)
             advance = order.get('advancePaid', 0)
             due = total - advance
             
+            items_style = ParagraphStyle('ItemsList', fontName=ENGLISH_FONT, fontSize=7, leading=10)
+            
             customer_data.append([
-                str(idx),
-                customer[:20],
-                mobile,
-                order_date,
-                Paragraph(items_summary, ParagraphStyle('ItemsList', fontName=UNICODE_FONT, fontSize=7, leading=10)),
-                f"₹{total:,.0f}",
-                f"₹{advance:,.0f}",
-                f"₹{due:,.0f}"
+                Paragraph(str(idx), cell_style),
+                Paragraph(format_mixed_text(customer[:20], ENGLISH_FONT, HINDI_FONT), cell_style),
+                Paragraph(mobile, cell_style),
+                Paragraph(order_date, cell_style),
+                Paragraph(items_summary, items_style),
+                Paragraph(f"₹{total:,.0f}", cell_style),
+                Paragraph(f"₹{advance:,.0f}", cell_style),
+                Paragraph(f"₹{due:,.0f}", cell_style)
             ])
         
-        customer_table = Table(customer_data, colWidths=[0.35*inch, 1.2*inch, 0.9*inch, 0.75*inch, 1.5*inch, 0.65*inch, 0.55*inch, 0.55*inch])
+        customer_table = Table(customer_data, colWidths=[0.35*inch, 1.0*inch, 1.1*inch, 0.9*inch, 2*inch, 0.8*inch, 0.8*inch, 0.8*inch])
         
         customer_table_style = [
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#9333EA')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('FONT', (0, 0), (-1, 0), UNICODE_FONT_BOLD),
             ('FONTSIZE', (0, 0), (-1, 0), 8),
             ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-            ('FONT', (0, 1), (-1, -1), UNICODE_FONT),
             ('FONTSIZE', (0, 1), (-1, -1), 8),
             ('ALIGN', (0, 1), (0, -1), 'CENTER'),
             ('ALIGN', (5, 1), (7, -1), 'RIGHT'),
@@ -452,6 +756,7 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
             ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('WORDWRAP', (2, 1), (3, -1), 'OFF'),  # Prevent wrapping for mobile and order date
         ]
         
         # Alternating row colors and highlight due amounts
@@ -459,11 +764,10 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
             if i % 2 == 0:
                 customer_table_style.append(('BACKGROUND', (0, i), (-1, i), colors.HexColor('#F9FAFB')))
             # Highlight due > 0 in red
-            order = orders[i-1]
+            order = sorted_orders[i-1]
             due = order.get('total', 0) - order.get('advancePaid', 0)
             if due > 0:
                 customer_table_style.append(('TEXTCOLOR', (7, i), (7, i), colors.HexColor('#DC2626')))
-                customer_table_style.append(('FONT', (7, i), (7, i), UNICODE_FONT_BOLD))
         
         customer_table.setStyle(TableStyle(customer_table_style))
         elements.append(customer_table)
@@ -473,7 +777,7 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
         footer_text = f"""
         <para align=center>
         <font size=9 color="#666666">
-        Sweet Store Sales Statement<br/>
+        Mansoor Hotel and Sweets - Sales Statement<br/>
         Total Orders: {total_orders} | Total Sweets: {len(sweets_sold)} types | Amount Due: ₹{total_due:,.2f}
         </font>
         </para>

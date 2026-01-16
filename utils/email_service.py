@@ -85,10 +85,27 @@ def send_order_invoice_to_manager(order_data, pdf_path):
         print("⚠️ Manager email not configured")
         return False
     
-    order_id = str(order_data.get('_id', 'N/A'))
+    # Get sequential order ID
+    order_number = order_data.get('orderNumber', None)
+    if order_number:
+        order_id = f"{order_number:04d}"  # Format as 0001, 0002, etc.
+    else:
+        order_id = str(order_data.get('_id', 'N/A'))  # Fallback to MongoDB ID
+    
     customer_name = order_data.get('customerName', 'Customer')
     total = order_data.get('total', 0)
+    
+    # Format delivery date as dd-mm-yyyy
     delivery_date = order_data.get('deliveryDate', 'N/A')
+    if delivery_date != 'N/A':
+        try:
+            from datetime import datetime
+            date_obj = datetime.strptime(str(delivery_date).split('T')[0], '%Y-%m-%d')
+            delivery_date = date_obj.strftime('%d-%m-%Y')
+        except:
+            pass
+    
+    items = order_data.get('items', [])
     
     print(f"   Order ID: {order_id}")
     print(f"   Customer: {customer_name}")
@@ -99,7 +116,7 @@ def send_order_invoice_to_manager(order_data, pdf_path):
     <html>
     <body style="font-family: Arial, sans-serif; color: #333;">
         <div style="background-color: #FFD700; padding: 20px; text-align: center;">
-            <h1 style="color: #0D0D0D; margin: 0;">🍬 Sweet Store</h1>
+            <h1 style="color: #0D0D0D; margin: 0;">🍬 Mansoor Hotel & Sweets</h1>
         </div>
         
         <div style="padding: 20px;">
@@ -128,6 +145,26 @@ def send_order_invoice_to_manager(order_data, pdf_path):
                     <td style="padding: 10px; background-color: #FFF8DC; font-weight: bold;">Delivery Date:</td>
                     <td style="padding: 10px; background-color: #FFFEF0;">{delivery_date}</td>
                 </tr>
+            </table>
+            
+            <h3 style="color: #D2691E; margin-top: 30px;">Order Items:</h3>
+            <table style="border-collapse: collapse; width: 100%; margin: 20px 0; border: 1px solid #ddd;">
+                <thead>
+                    <tr style="background-color: #D2691E; color: white;">
+                        <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Sweet Name</th>
+                        <th style="padding: 12px; text-align: center; border: 1px solid #ddd;">Quantity</th>
+                        <th style="padding: 12px; text-align: right; border: 1px solid #ddd;">Price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {''.join([f'''
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #ddd;">{item.get('sweetName', 'N/A')}</td>
+                        <td style="padding: 10px; text-align: center; border: 1px solid #ddd;">{item.get('quantity', 0)} {item.get('unit', 'kg')}</td>
+                        <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">₹{item.get('price', 0)}</td>
+                    </tr>
+                    ''' for item in items])}
+                </tbody>
             </table>
             
             <p style="background-color: #FFF8DC; padding: 15px; border-left: 4px solid #FFD700;">

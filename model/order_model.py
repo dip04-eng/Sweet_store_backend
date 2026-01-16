@@ -88,6 +88,21 @@ except Exception as e:
 
 db = client["sweet_store"] if client is not None else None
 order_collection = db["orders"] if db is not None else None
+counter_collection = db["counters"] if db is not None else None
+
+def get_next_order_number():
+    """Get the next sequential order number using MongoDB counter."""
+    if counter_collection is None:
+        raise RuntimeError("Database not connected: cannot get order number")
+    
+    # Find and increment the counter atomically
+    result = counter_collection.find_one_and_update(
+        {"_id": "orderCounter"},
+        {"$inc": {"seq": 1}},
+        upsert=True,  # Create if doesn't exist
+        return_document=ReturnDocument.AFTER
+    )
+    return result["seq"]
 
 def place_order(order):
     """Place a new order in the database with delivery date support."""
@@ -107,6 +122,9 @@ def place_order(order):
     
     now = datetime.now()
     order["createdAt"] = now
+    
+    # Assign sequential order number
+    order["orderNumber"] = get_next_order_number()
     
     # Store both dates as strings in YYYY-MM-DD format
     order["orderDate"] = order["orderDate"]
