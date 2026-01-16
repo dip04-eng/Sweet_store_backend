@@ -79,9 +79,13 @@ try:
             mongo_kwargs["tlsAllowInvalidCertificates"] = True
 
     client = MongoClient(MONGO_URI, **mongo_kwargs)
-    # Test the connection
-    client.admin.command('ping')
-    print("✅ MongoDB connection successful!")
+    # Test the connection with timeout
+    try:
+        client.admin.command('ping', maxTimeMS=5000)  # 5 second timeout
+        print("✅ MongoDB connection successful!")
+    except Exception as ping_error:
+        print(f"⚠️ MongoDB ping failed: {ping_error}")
+        # Don't fail completely, allow server to start
 except Exception as e:
     print(f"⚠️ MongoDB connection error: {e}")
     client = None
