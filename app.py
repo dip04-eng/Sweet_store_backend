@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from model.sweet_model import add_sweet, get_sweets, remove_sweet, get_sweet_by_id
 from model.order_model import place_order, get_orders, get_daily_summary, update_order_status, edit_order
-from utils.pdf_generator import generate_order_pdf, generate_orders_statement_pdf
+from utils.pdf_generator import generate_order_pdf, generate_orders_statement_pdf, generate_sales_report_pdf
 from utils.email_service import send_order_invoice_to_manager, send_contact_form_to_manager
 import os
 from io import BytesIO
@@ -416,6 +416,62 @@ def admin_download_statement():
         import traceback
         traceback.print_exc()
         return jsonify({"error": f"Failed to generate statement: {str(e)}"}), 500
+
+
+@app.route("/admin/download_sales_report", methods=["POST", "OPTIONS"])
+def admin_download_sales_report():
+    """Generate and download a PDF sales report for a specific date."""
+    # Handle preflight OPTIONS request
+    if request.method == "OPTIONS":
+        response = app.make_default_options_response()
+        response.headers['Access-Control-Allow-Origin'] = request.headers.get('Origin', '*')
+        response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Accept'
+        response.headers['Access-Control-Max-Age'] = '3600'
+        return response
+    
+    try:
+        data = request.get_json() or {}
+        date = data.get('date')
+        sales_data = data.get('sales_data', {})
+        orders = data.get('orders', [])
+        
+        if not date:
+            return jsonify({"error": "Date is required"}), 400
+        
+        if not sales_data:
+            return jsonify({"error": "Sales data is required"}), 400
+        
+        print(f"\n📊 Sales report download requested")
+        print(f"   Date: {date}")
+        print(f"   Sales Data: {sales_data}")
+        print(f"   Orders count: {len(orders)}")
+        
+        # Generate PDF
+        pdf_bytes = generate_sales_report_pdf(date, sales_data, orders)
+        
+        if not pdf_bytes:
+            return jsonify({"error": "Failed to generate sales report PDF"}), 500
+        
+        # Create BytesIO buffer for sending
+        buffer = BytesIO(pdf_bytes)
+        buffer.seek(0)
+        
+        # Generate filename with the report date
+        filename = f"sales_report_{date}.pdf"
+        
+        return send_file(
+            buffer,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=filename
+        )
+        
+    except Exception as e:
+        print(f"❌ Sales report download error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Failed to generate sales report: {str(e)}"}), 500
 
 
 @app.route("/contact", methods=["POST", "OPTIONS"])

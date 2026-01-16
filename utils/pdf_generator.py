@@ -800,3 +800,174 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
         import traceback
         traceback.print_exc()
         return None
+
+
+def generate_sales_report_pdf(date, sales_data, orders, filename="sales_report.pdf"):
+    """
+    Generate a PDF sales report for a specific date with sales summary and order details.
+    
+    Args:
+        date: Date string in YYYY-MM-DD format
+        sales_data: Dictionary with total_amount, total_sweets_sold, total_orders
+        orders: List of order dictionaries for the date
+        filename: Output PDF filename
+    
+    Returns:
+        bytes: PDF file bytes
+    """
+    print(f"📊 generate_sales_report_pdf called")
+    print(f"   Date: {date}")
+    print(f"   Sales Data: {sales_data}")
+    print(f"   Total Orders: {len(orders) if orders else 0}")
+    
+    try:
+        from io import BytesIO
+        
+        # Create PDF document
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4)
+        elements = []
+        styles = getSampleStyleSheet()
+        
+        # Custom styles with Unicode font support
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontName=ENGLISH_FONT,
+            fontSize=22,
+            textColor=colors.HexColor('#9333EA'),
+            spaceAfter=20,
+            alignment=TA_CENTER
+        )
+        
+        subtitle_style = ParagraphStyle(
+            'SubTitle',
+            parent=styles['Normal'],
+            fontName=ENGLISH_FONT,
+            fontSize=11,
+            textColor=colors.HexColor('#666666'),
+            spaceAfter=15,
+            alignment=TA_CENTER
+        )
+        
+        header_style = ParagraphStyle(
+            'Header',
+            parent=styles['Heading2'],
+            fontName=ENGLISH_FONT,
+            fontSize=16,
+            textColor=colors.HexColor('#374151'),
+            spaceAfter=10
+        )
+        
+        normal_style = ParagraphStyle(
+            'Normal',
+            parent=styles['Normal'],
+            fontName=ENGLISH_FONT,
+            fontSize=10,
+            textColor=colors.HexColor('#374151')
+        )
+        
+        # Title
+        elements.append(Paragraph("🍰 Mansoor Hotel & Restaurant", title_style))
+        elements.append(Paragraph(f"Daily Sales Report - {date}", subtitle_style))
+        elements.append(Spacer(1, 20))
+        
+        # Sales Summary Section
+        elements.append(Paragraph("📊 Sales Summary", header_style))
+        
+        # Create sales summary table
+        summary_data = [
+            ['Metric', 'Value'],
+            ['Total Revenue', f"₹{sales_data.get('total_amount', 0):.2f}"],
+            ['Total Orders', str(sales_data.get('total_orders', 0))],
+            ['Total Items Sold', f"{sales_data.get('total_sweets_sold', 0)} units"]
+        ]
+        
+        summary_table = Table(summary_data, colWidths=[3*inch, 2*inch])
+        summary_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#9333EA')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 10),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F3F4F6')])
+        ]))
+        
+        elements.append(summary_table)
+        elements.append(Spacer(1, 30))
+        
+        # Orders Details Section (if orders exist)
+        if orders and len(orders) > 0:
+            elements.append(Paragraph("📋 Order Details", header_style))
+            
+            # Create orders table
+            orders_data = [['Order ID', 'Customer', 'Phone', 'Amount', 'Status', 'Time']]
+            
+            for order in orders:
+                # Format time
+                order_time = "N/A"
+                if order.get('created_at'):
+                    try:
+                        dt = datetime.fromisoformat(order['created_at'])
+                        order_time = dt.strftime('%H:%M')
+                    except:
+                        order_time = str(order.get('created_at', 'N/A'))[:5]
+                
+                orders_data.append([
+                    str(order.get('order_id', 'N/A'))[:10],
+                    str(order.get('customer_name', 'N/A'))[:15],
+                    str(order.get('customer_phone', 'N/A'))[:12],
+                    f"₹{order.get('total_amount', 0):.0f}",
+                    str(order.get('status', 'N/A'))[:10],
+                    order_time
+                ])
+            
+            orders_table = Table(orders_data, colWidths=[1.2*inch, 1.5*inch, 1.2*inch, 0.8*inch, 1*inch, 0.8*inch])
+            orders_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#9333EA')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('ALIGN', (3, 0), (3, -1), 'RIGHT'),  # Amount column right-aligned
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 1), (-1, -1), 8),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F3F4F6')])
+            ]))
+            
+            elements.append(orders_table)
+            elements.append(Spacer(1, 20))
+        
+        # Footer
+        from datetime import datetime
+        footer_text = f"Generated on {datetime.now().strftime('%d/%m/%Y at %H:%M:%S')}"
+        footer_style = ParagraphStyle(
+            'Footer',
+            parent=styles['Normal'],
+            fontName=ENGLISH_FONT,
+            fontSize=8,
+            textColor=colors.HexColor('#666666'),
+            alignment=TA_CENTER
+        )
+        elements.append(Spacer(1, 20))
+        elements.append(Paragraph(footer_text, footer_style))
+        
+        # Build PDF
+        doc.build(elements)
+        
+        print(f"✅ Sales report PDF generated successfully")
+        return buffer.getvalue()
+        
+    except Exception as e:
+        print(f"❌ Sales report PDF generation error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return None
