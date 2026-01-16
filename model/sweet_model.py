@@ -117,12 +117,18 @@ def get_sweets(category: str | None = None):
             d["unit"] = "kg"  # Default to 'kg' for backward compatibility
         if "isFestival" not in d:
             d["isFestival"] = False  # Default to False for backward compatibility
-        
+
+        # --- Ensure 'price' field is always present ---
+        # If 'price' is missing but 'rate' exists, use 'rate' as 'price'
+        if "price" not in d or d["price"] is None:
+            if "rate" in d and d["rate"] is not None:
+                d["price"] = d["rate"]
+
         # Normalize image field: ensure 'image' field exists
         # Support legacy records that may have 'image_url' or 'imageUrl'
         if "image" not in d:
             d["image"] = d.get("image_url") or d.get("imageUrl") or ""
-        
+
         # Log image info for debugging (only first sweet to avoid spam)
         if docs.index(d) == 0 and d.get("image"):
             print(f"📸 Returning sweet '{d.get('name')}' - Image length: {len(d['image'])} characters")
@@ -161,3 +167,43 @@ def remove_sweet(name):
     if sweet_collection is None:
         raise RuntimeError("Database not connected: cannot remove sweet")
     sweet_collection.delete_one({"name": name})
+
+def update_sweet(sweet_id, data):
+    """Update an existing sweet in the database."""
+    if sweet_collection is None:
+        raise RuntimeError("Database not connected: cannot update sweet")
+    
+    try:
+        # Convert string ID to ObjectId
+        if isinstance(sweet_id, str):
+            sweet_id = ObjectId(sweet_id)
+        
+        # Prepare update data
+        update_data = {}
+        
+        # Update basic fields if provided
+        if "name" in data:
+            update_data["name"] = data["name"]
+        if "price" in data:
+            update_data["price"] = float(data["price"])
+        if "unit" in data:
+            update_data["unit"] = data["unit"]
+        if "category" in data:
+            update_data["category"] = data["category"]
+        if "image" in data:
+            update_data["image"] = data["image"]
+        
+        # Update the sweet
+        result = sweet_collection.update_one(
+            {"_id": sweet_id},
+            {"$set": update_data}
+        )
+        
+        if result.modified_count == 0:
+            raise ValueError("Sweet not found or no changes made")
+        
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error updating sweet: {e}")
+        raise e

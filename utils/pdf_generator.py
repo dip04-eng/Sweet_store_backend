@@ -649,7 +649,14 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
             Paragraph(f"₹{total_amount:,.2f}", cell_style_bold)
         ])
         
-        sweets_table = Table(sweets_data, colWidths=[0.5*inch, 2.5*inch, 1.5*inch, 1.5*inch])
+        # Widen the Sweet Name column to fit both English and Hindi
+        # Further widen the Sweet Name column for long Hindi/English names
+        # Maximize Sweet Name column width and slightly reduce others
+        # Set Sweet Name column to maximum width for long names
+        # Set a large fixed width for Sweet Name and smaller for others to prevent overlay
+        # Use percentages for column widths to allow dynamic sizing
+        # Make all columns dynamic, letting ReportLab auto-size based on content
+        sweets_table = Table(sweets_data)
         sweets_table_style = [
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#EC4899')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
@@ -804,160 +811,190 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
 
 def generate_sales_report_pdf(date, sales_data, orders, filename="sales_report.pdf"):
     """
-    Generate a PDF sales report for a specific date with sales summary and order details.
-    
-    Args:
-        date: Date string in YYYY-MM-DD format
-        sales_data: Dictionary with total_amount, total_sweets_sold, total_orders
-        orders: List of order dictionaries for the date
-        filename: Output PDF filename
-    
-    Returns:
-        bytes: PDF file bytes
+    Generate a PDF sales report matching the exact website display format.
     """
     print(f"📊 generate_sales_report_pdf called")
     print(f"   Date: {date}")
     print(f"   Sales Data: {sales_data}")
-    print(f"   Total Orders: {len(orders) if orders else 0}")
     
     try:
         from io import BytesIO
         
         # Create PDF document
         buffer = BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=A4)
+        doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=50, rightMargin=50, topMargin=50, bottomMargin=50)
         elements = []
         styles = getSampleStyleSheet()
         
-        # Custom styles with Unicode font support
+        # Use best available Unicode fonts
+        try:
+            # Try to use registered Unicode fonts first
+            unicode_font = UNICODE_FONT if 'UNICODE_FONT' in globals() else 'DejaVu Sans'
+            unicode_font_bold = UNICODE_FONT_BOLD if 'UNICODE_FONT_BOLD' in globals() else 'DejaVu Sans Bold'
+        except:
+            # Fallback to system fonts
+            unicode_font = 'Helvetica'
+            unicode_font_bold = 'Helvetica-Bold'
+        
+        # Custom styles for exact website matching
         title_style = ParagraphStyle(
             'CustomTitle',
             parent=styles['Heading1'],
-            fontName=ENGLISH_FONT,
-            fontSize=22,
-            textColor=colors.HexColor('#9333EA'),
-            spaceAfter=20,
+            fontName=unicode_font_bold,
+            fontSize=18,
+            textColor=colors.HexColor('#8B5CF6'),  # Purple color
+            spaceAfter=5,
             alignment=TA_CENTER
         )
         
         subtitle_style = ParagraphStyle(
             'SubTitle',
             parent=styles['Normal'],
-            fontName=ENGLISH_FONT,
-            fontSize=11,
+            fontName=unicode_font,
+            fontSize=12,
             textColor=colors.HexColor('#666666'),
-            spaceAfter=15,
+            spaceAfter=30,
             alignment=TA_CENTER
         )
         
         header_style = ParagraphStyle(
             'Header',
             parent=styles['Heading2'],
-            fontName=ENGLISH_FONT,
-            fontSize=16,
-            textColor=colors.HexColor('#374151'),
-            spaceAfter=10
+            fontName=unicode_font_bold,
+            fontSize=14,
+            textColor=colors.HexColor('#8B5CF6'),
+            spaceAfter=15,
+            spaceBefore=20
         )
         
-        normal_style = ParagraphStyle(
-            'Normal',
-            parent=styles['Normal'],
-            fontName=ENGLISH_FONT,
-            fontSize=10,
-            textColor=colors.HexColor('#374151')
-        )
-        
-        # Title
-        elements.append(Paragraph("🍰 Mansoor Hotel & Restaurant", title_style))
+        # Title and Date
+        elements.append(Paragraph("🍰 Mansoor Hotel & Sweets", title_style))
         elements.append(Paragraph(f"Daily Sales Report - {date}", subtitle_style))
-        elements.append(Spacer(1, 20))
         
-        # Sales Summary Section
+        # Sales Summary Section - 4 Cards Layout
         elements.append(Paragraph("📊 Sales Summary", header_style))
         
-        # Create sales summary table
+        # Create 2x2 grid for summary cards (exactly like website)
+        total_revenue = sales_data.get('total_amount', 0)
+        total_orders = sales_data.get('total_orders', 0)
+        items_sold = sales_data.get('total_sweets_sold', 0)
+        avg_order_value = sales_data.get('avg_order_value', 0)
+        
         summary_data = [
-            ['Metric', 'Value'],
-            ['Total Revenue', f"₹{sales_data.get('total_amount', 0):.2f}"],
-            ['Total Orders', str(sales_data.get('total_orders', 0))],
-            ['Total Items Sold', f"{sales_data.get('total_sweets_sold', 0)} units"]
+            [
+                f"Total Amount\n₹{total_revenue:.2f}",
+                f"Number of People\n{total_orders}"
+            ],
+            [
+                f"Items Sold\n{items_sold}",
+                f"Avg. Order Value\n₹{avg_order_value:.2f}"
+            ]
         ]
         
-        summary_table = Table(summary_data, colWidths=[3*inch, 2*inch])
+        summary_table = Table(summary_data, colWidths=[2.8*inch, 2.8*inch])
         summary_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#9333EA')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 12),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 1), (-1, -1), 10),
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F3F4F6')])
+            # Card styling to match website
+            ('BACKGROUND', (0, 0), (0, 0), colors.HexColor('#A855F7')),  # Purple card
+            ('BACKGROUND', (1, 0), (1, 0), colors.HexColor('#3B82F6')),  # Blue card  
+            ('BACKGROUND', (0, 1), (0, 1), colors.HexColor('#10B981')),  # Green card
+            ('BACKGROUND', (1, 1), (1, 1), colors.HexColor('#F97316')),  # Orange card
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.white),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('FONTNAME', (0, 0), (-1, -1), unicode_font_bold),
+            ('FONTSIZE', (0, 0), (-1, -1), 12),
+            ('TOPPADDING', (0, 0), (-1, -1), 20),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 20),
+            ('LEFTPADDING', (0, 0), (-1, -1), 15),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 15),
+            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#E5E7EB')),
         ]))
         
         elements.append(summary_table)
         elements.append(Spacer(1, 30))
         
-        # Orders Details Section (if orders exist)
-        if orders and len(orders) > 0:
-            elements.append(Paragraph("📋 Order Details", header_style))
+        # Sweets Sold Breakdown Section (exactly like website)
+        sweets_breakdown = sales_data.get('sweets_breakdown', [])
+        if sweets_breakdown:
+            elements.append(Paragraph("🍬 Sweets Sold Breakdown", header_style))
             
-            # Create orders table
-            orders_data = [['Order ID', 'Customer', 'Phone', 'Amount', 'Status', 'Time']]
+            # Create table with exact website columns
+            breakdown_data = [['Sweet Name', 'Quantity', 'Rate', 'Total Amount']]
             
-            for order in orders:
-                # Format time
-                order_time = "N/A"
-                if order.get('created_at'):
-                    try:
-                        dt = datetime.fromisoformat(order['created_at'])
-                        order_time = dt.strftime('%H:%M')
-                    except:
-                        order_time = str(order.get('created_at', 'N/A'))[:5]
+            for sweet in sweets_breakdown:
+                sweet_name = sweet.get('name', 'Unknown')
+                quantity = sweet.get('quantity', 0)
+                rate = sweet.get('rate', 0)
+                total = sweet.get('total', 0)
+                unit = sweet.get('unit', 'kg')
                 
-                orders_data.append([
-                    str(order.get('order_id', 'N/A'))[:10],
-                    str(order.get('customer_name', 'N/A'))[:15],
-                    str(order.get('customer_phone', 'N/A'))[:12],
-                    f"₹{order.get('total_amount', 0):.0f}",
-                    str(order.get('status', 'N/A'))[:10],
-                    order_time
+                breakdown_data.append([
+                    sweet_name,  # Keep original name with Unicode characters
+                    f"{quantity} {unit}",
+                    f"₹{rate:.2f} / {unit}",
+                    f"₹{total:.2f}"
                 ])
             
-            orders_table = Table(orders_data, colWidths=[1.2*inch, 1.5*inch, 1.2*inch, 0.8*inch, 1*inch, 0.8*inch])
-            orders_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#9333EA')),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                ('ALIGN', (3, 0), (3, -1), 'RIGHT'),  # Amount column right-aligned
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, 0), 10),
-                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-                ('FONTSIZE', (0, 1), (-1, -1), 8),
-                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F3F4F6')])
+            # Add Grand Total row (exactly like website)
+            breakdown_data.append(['', '', 'Grand Total:', f"₹{total_revenue:.2f}"])
+            
+            # Create table with exact website styling
+            breakdown_table = Table(breakdown_data, colWidths=[2.2*inch, 1.2*inch, 1.3*inch, 1.3*inch])
+            breakdown_table.setStyle(TableStyle([
+                # Header styling (gray background like website)
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#D1D5DB')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#374151')),
+                ('ALIGN', (0, 0), (0, 0), 'LEFT'),    # Sweet Name left
+                ('ALIGN', (1, 0), (1, 0), 'CENTER'),  # Quantity center
+                ('ALIGN', (2, 0), (2, 0), 'CENTER'),  # Rate center  
+                ('ALIGN', (3, 0), (3, 0), 'RIGHT'),   # Total Amount right
+                ('FONTNAME', (0, 0), (-1, 0), unicode_font_bold),
+                ('FONTSIZE', (0, 0), (-1, 0), 11),
+                
+                # Data rows styling
+                ('BACKGROUND', (0, 1), (-1, -2), colors.white),
+                ('ALIGN', (0, 1), (0, -2), 'LEFT'),    # Sweet names left
+                ('ALIGN', (1, 1), (1, -2), 'CENTER'),  # Quantity center
+                ('ALIGN', (2, 1), (2, -2), 'CENTER'),  # Rate center
+                ('ALIGN', (3, 1), (3, -2), 'RIGHT'),   # Amount right
+                ('FONTNAME', (0, 1), (-1, -2), unicode_font),
+                ('FONTSIZE', (0, 1), (-1, -2), 10),
+                
+                # Alternating row colors like website
+                ('ROWBACKGROUNDS', (0, 1), (-1, -2), [colors.white, colors.HexColor('#F9FAFB')]),
+                
+                # Grand Total row styling (gray background like website)
+                ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#F3F4F6')),
+                ('FONTNAME', (0, -1), (-1, -1), unicode_font_bold),
+                ('FONTSIZE', (0, -1), (-1, -1), 12),
+                ('ALIGN', (2, -1), (2, -1), 'RIGHT'),  # "Grand Total:" right-aligned
+                ('ALIGN', (3, -1), (3, -1), 'RIGHT'),  # Amount right-aligned
+                ('TEXTCOLOR', (3, -1), (3, -1), colors.HexColor('#8B5CF6')),  # Purple color like website
+                
+                # Table borders
+                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#E5E7EB')),
+                ('BOX', (0, 0), (-1, -1), 2, colors.HexColor('#D1D5DB')),
+                
+                # Padding
+                ('TOPPADDING', (0, 0), (-1, -1), 8),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+                ('LEFTPADDING', (0, 0), (-1, -1), 12),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 12),
             ]))
             
-            elements.append(orders_table)
-            elements.append(Spacer(1, 20))
+            elements.append(breakdown_table)
+            elements.append(Spacer(1, 30))
         
         # Footer
-        from datetime import datetime
         footer_text = f"Generated on {datetime.now().strftime('%d/%m/%Y at %H:%M:%S')}"
         footer_style = ParagraphStyle(
             'Footer',
             parent=styles['Normal'],
-            fontName=ENGLISH_FONT,
+            fontName=unicode_font,
             fontSize=8,
             textColor=colors.HexColor('#666666'),
             alignment=TA_CENTER
         )
-        elements.append(Spacer(1, 20))
         elements.append(Paragraph(footer_text, footer_style))
         
         # Build PDF

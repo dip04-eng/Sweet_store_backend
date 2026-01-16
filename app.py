@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
-from model.sweet_model import add_sweet, get_sweets, remove_sweet, get_sweet_by_id
+from model.sweet_model import add_sweet, get_sweets, remove_sweet, get_sweet_by_id, update_sweet
 from model.order_model import place_order, get_orders, get_daily_summary, update_order_status, edit_order
 from utils.pdf_generator import generate_order_pdf, generate_orders_statement_pdf, generate_sales_report_pdf
 from utils.email_service import send_order_invoice_to_manager, send_contact_form_to_manager
@@ -254,6 +254,36 @@ def admin_remove_sweet():
         return jsonify({"message": f"Sweet '{name}' removed successfully"}), 200
     except Exception as e:
         return jsonify({"error": f"Failed to remove sweet: {str(e)}"}), 500
+
+@app.route("/admin/update_sweet", methods=["PUT"])
+def admin_update_sweet():
+    """Update an existing sweet in the inventory."""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+        
+        sweet_id = data.get("sweetId")
+        if not sweet_id:
+            return jsonify({"error": "Sweet ID is required"}), 400
+        
+        print(f"📝 Sweet update request:")
+        print(f"   ID: {sweet_id}")
+        print(f"   Data: {data}")
+        
+        # Update the sweet
+        update_sweet(sweet_id, data)
+        
+        print(f"✅ Sweet updated successfully: {data.get('name', 'Unknown')}")
+        return jsonify({"message": "Sweet updated successfully"}), 200
+        
+    except ValueError as e:
+        print(f"❌ Validation error updating sweet: {str(e)}")
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        print(f"❌ Error updating sweet: {str(e)}")
+        return jsonify({"error": f"Failed to update sweet: {str(e)}"}), 500
 
 @app.route("/admin/orders", methods=["GET"])
 def admin_orders():
