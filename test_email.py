@@ -36,13 +36,13 @@ def test_email_pdf():
             {
                 'sweetName': 'Jalebi',
                 'quantity': 0.5,
-                'unit': 'kg',
+                'unit': 'Kg',
                 'price': 200
             },
             {
                 'sweetName': 'Gulab Jamun',
                 'quantity': 1,
-                'unit': 'kg',
+                'unit': 'Kg',
                 'price': 250
             }
         ]

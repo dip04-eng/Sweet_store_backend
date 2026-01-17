@@ -34,7 +34,7 @@ for font_file, font_name in fonts_to_test:
             ('FONTSIZE', (0, 0), (-1, -1), 14),
             ('GRID', (0, 0), (-1, -1), 1, colors.black),
             ('PADDING', (0, 0), (-1, -1), 10),
-            ('BACKGROUND', (0, 0), (-1, 0), colors.lightblue),
+            ('BACKgROUND', (0, 0), (-1, 0), colors.lightblue),
         ]))
         elements.append(table)
         

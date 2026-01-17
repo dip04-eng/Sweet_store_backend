@@ -100,7 +100,7 @@ Before deploying to production:
 
 - [ ] Backend logs show image length > 10,000 characters
 - [ ] GET `/sweets` returns image starting with `data:image/`
-- [ ] Unit field correctly stores `piece` or `kg`
+- [ ] Unit field correctly stores `piece` or `Kg`
 - [ ] No 413 "Payload Too Large" errors
 - [ ] No CORS errors in browser console
 - [ ] MongoDB connection is stable
@@ -171,9 +171,9 @@ db.sweets.findOne({}, {image: 1, name: 1})
 
 **Solution:** Already configured! CORS allows all origins and methods
 
-### Issue: Unit always shows 'kg'
+### Issue: Unit always shows 'Kg'
 
-**Solution:** Ensure frontend sends exactly `"piece"` (lowercase) or `"kg"`
+**Solution:** Ensure frontend sends exactly `"piece"` (lowercase) or `"Kg"`
 
 ---
 
@@ -221,7 +221,7 @@ Your backend is now fully configured to:
 - ✅ Return images to frontend without modification
 - ✅ Log detailed information for debugging
 - ✅ Handle CORS for large responses
-- ✅ Support both `piece` and `kg` units
+- ✅ Support both `piece` and `Kg` units
 
 **The backend is production-ready!** 🎉
 

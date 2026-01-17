@@ -12,7 +12,7 @@
 - [x] Complete base64 strings returned without truncation
 - [x] Detailed logging added for debugging
 - [x] Backward compatibility with legacy field names
-- [x] Unit validation (only `kg` or `piece`)
+- [x] Unit validation (only `Kg` or `piece`)
 - [x] **Twilio SMS integration added** for customer and manager notifications
 
 ### Testing Scripts ✅
@@ -122,8 +122,8 @@ If images still don't display:
 - Check: Is base64 string complete (not truncated)?
 - Check: Browser console for image decode errors
 
-**Issue 5: Unit always shows 'kg'**
-- Check: Is frontend sending exactly `"piece"` or `"kg"` (lowercase)?
+**Issue 5: Unit always shows 'Kg'**
+- Check: Is frontend sending exactly `"piece"` or `"Kg"` (lowercase)?
 
 ---
 

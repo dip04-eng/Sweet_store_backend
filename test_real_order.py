@@ -20,14 +20,14 @@ order_data = {
             "sweetId": "test123",
             "sweetName": "Jalebi",
             "quantity": 0.5,
-            "unit": "kg",
+            "unit": "Kg",
             "price": 200
         },
         {
             "sweetId": "test456",
             "sweetName": "Gulab Jamun",
             "quantity": 1,
-            "unit": "kg",
+            "unit": "Kg",
             "price": 250
         }
     ],

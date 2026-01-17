@@ -325,7 +325,7 @@ def generate_order_pdf(order_data, filename="invoice.pdf"):
         for idx, item in enumerate(items, 1):
             sweet_name = item.get('sweetName', 'N/A')
             quantity = item.get('quantity', 0)
-            unit = item.get('unit', 'kg')
+            unit = item.get('unit', 'Kg')
             price = item.get('price', 0)
             total = price * quantity
             
@@ -353,7 +353,7 @@ def generate_order_pdf(order_data, filename="invoice.pdf"):
         items_table = Table(items_data, colWidths=[0.5*inch, 2.5*inch, 1.2*inch, 1*inch, 1.3*inch])
         items_table.setStyle(TableStyle([
             # Header row
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#FFD700')),
+            ('BACKgROUND', (0, 0), (-1, 0), colors.HexColor('#FFD700')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
             ('FONTSIZE', (0, 0), (-1, 0), 11),
             ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
@@ -365,7 +365,7 @@ def generate_order_pdf(order_data, filename="invoice.pdf"):
             
             # Total row
             ('FONTSIZE', (0, -1), (-1, -1), 12),
-            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#FFF8DC')),
+            ('BACKgROUND', (0, -1), (-1, -1), colors.HexColor('#FFF8DC')),
             ('TEXTCOLOR', (0, -1), (-1, -1), colors.HexColor('#D2691E')),
             
             # Grid
@@ -570,14 +570,14 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
         
         summary_table = Table(summary_data, colWidths=[1.5*inch, 1.5*inch, 1.5*inch, 1.5*inch])
         summary_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#9333EA')),
+            ('BACKgROUND', (0, 0), (-1, 0), colors.HexColor('#9333EA')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
             ('FONT', (0, 0), (-1, 0), ENGLISH_FONT),
             ('FONTSIZE', (0, 0), (-1, 0), 10),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('FONT', (0, 1), (-1, 1), ENGLISH_FONT),
             ('FONTSIZE', (0, 1), (-1, 1), 12),
-            ('BACKGROUND', (0, 1), (-1, 1), colors.HexColor('#F3E8FF')),
+            ('BACKgROUND', (0, 1), (-1, 1), colors.HexColor('#F3E8FF')),
             ('TEXTCOLOR', (3, 1), (3, 1), colors.HexColor('#DC2626')),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
             ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#9333EA')),
@@ -599,7 +599,7 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
             for item in items:
                 sweet_name = item.get('sweetName', 'Unknown')
                 quantity = float(item.get('quantity', 0))
-                unit = item.get('unit', 'kg')
+                unit = item.get('unit', 'Kg')
                 price = float(item.get('price', 0))
                 item_total = quantity * price
                 
@@ -658,7 +658,7 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
         # Make all columns dynamic, letting ReportLab auto-size based on content
         sweets_table = Table(sweets_data)
         sweets_table_style = [
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#EC4899')),
+            ('BACKgROUND', (0, 0), (-1, 0), colors.HexColor('#EC4899')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
             ('FONTSIZE', (0, 0), (-1, 0), 10),
             ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
@@ -667,7 +667,7 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
             ('ALIGN', (2, 1), (2, -1), 'CENTER'),
             ('ALIGN', (3, 1), (3, -1), 'RIGHT'),
             # Grand total row
-            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#FDF2F8')),
+            ('BACKgROUND', (0, -1), (-1, -1), colors.HexColor('#FDF2F8')),
             ('FONTSIZE', (0, -1), (-1, -1), 10),
             ('TEXTCOLOR', (0, -1), (-1, -1), colors.HexColor('#9333EA')),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
@@ -680,7 +680,7 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
         # Alternating row colors
         for i in range(1, len(sweets_data) - 1):
             if i % 2 == 0:
-                sweets_table_style.append(('BACKGROUND', (0, i), (-1, i), colors.HexColor('#FDF2F8')))
+                sweets_table_style.append(('BACKgROUND', (0, i), (-1, i), colors.HexColor('#FDF2F8')))
         
         sweets_table.setStyle(TableStyle(sweets_table_style))
         elements.append(sweets_table)
@@ -724,7 +724,7 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
             for item in items:  # Show all items
                 sweet_name = item.get('sweetName', '')
                 quantity = item.get('quantity', 0)
-                unit = item.get('unit', 'kg')
+                unit = item.get('unit', 'Kg')
                 # Apply mixed font to sweet name with quantity and unit
                 mixed_name = format_mixed_text(f"{sweet_name} - {quantity} {unit}", ENGLISH_FONT, HINDI_FONT)
                 items_list.append(mixed_name)
@@ -751,7 +751,7 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
         customer_table = Table(customer_data, colWidths=[0.35*inch, 1.0*inch, 1.1*inch, 0.9*inch, 2*inch, 0.8*inch, 0.8*inch, 0.8*inch])
         
         customer_table_style = [
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#9333EA')),
+            ('BACKgROUND', (0, 0), (-1, 0), colors.HexColor('#9333EA')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
             ('FONTSIZE', (0, 0), (-1, 0), 8),
             ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
@@ -769,7 +769,7 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
         # Alternating row colors and highlight due amounts
         for i in range(1, len(customer_data)):
             if i % 2 == 0:
-                customer_table_style.append(('BACKGROUND', (0, i), (-1, i), colors.HexColor('#F9FAFB')))
+                customer_table_style.append(('BACKgROUND', (0, i), (-1, i), colors.HexColor('#F9FAFB')))
             # Highlight due > 0 in red
             order = sorted_orders[i-1]
             due = order.get('total', 0) - order.get('advancePaid', 0)
@@ -894,10 +894,10 @@ def generate_sales_report_pdf(date, sales_data, orders, filename="sales_report.p
         summary_table = Table(summary_data, colWidths=[2.8*inch, 2.8*inch])
         summary_table.setStyle(TableStyle([
             # Card styling to match website
-            ('BACKGROUND', (0, 0), (0, 0), colors.HexColor('#A855F7')),  # Purple card
-            ('BACKGROUND', (1, 0), (1, 0), colors.HexColor('#3B82F6')),  # Blue card  
-            ('BACKGROUND', (0, 1), (0, 1), colors.HexColor('#10B981')),  # Green card
-            ('BACKGROUND', (1, 1), (1, 1), colors.HexColor('#F97316')),  # Orange card
+            ('BACKgROUND', (0, 0), (0, 0), colors.HexColor('#A855F7')),  # Purple card
+            ('BACKgROUND', (1, 0), (1, 0), colors.HexColor('#3B82F6')),  # Blue card  
+            ('BACKgROUND', (0, 1), (0, 1), colors.HexColor('#10B981')),  # Green card
+            ('BACKgROUND', (1, 1), (1, 1), colors.HexColor('#F97316')),  # Orange card
             ('TEXTCOLOR', (0, 0), (-1, -1), colors.white),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
@@ -926,7 +926,7 @@ def generate_sales_report_pdf(date, sales_data, orders, filename="sales_report.p
                 quantity = sweet.get('quantity', 0)
                 rate = sweet.get('rate', 0)
                 total = sweet.get('total', 0)
-                unit = sweet.get('unit', 'kg')
+                unit = sweet.get('unit', 'Kg')
                 
                 breakdown_data.append([
                     sweet_name,  # Keep original name with Unicode characters
@@ -941,8 +941,8 @@ def generate_sales_report_pdf(date, sales_data, orders, filename="sales_report.p
             # Create table with exact website styling
             breakdown_table = Table(breakdown_data, colWidths=[2.2*inch, 1.2*inch, 1.3*inch, 1.3*inch])
             breakdown_table.setStyle(TableStyle([
-                # Header styling (gray background like website)
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#D1D5DB')),
+                # Header styling (gray bacKground like website)
+                ('BACKgROUND', (0, 0), (-1, 0), colors.HexColor('#D1D5DB')),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#374151')),
                 ('ALIGN', (0, 0), (0, 0), 'LEFT'),    # Sweet Name left
                 ('ALIGN', (1, 0), (1, 0), 'CENTER'),  # Quantity center
@@ -952,7 +952,7 @@ def generate_sales_report_pdf(date, sales_data, orders, filename="sales_report.p
                 ('FONTSIZE', (0, 0), (-1, 0), 11),
                 
                 # Data rows styling
-                ('BACKGROUND', (0, 1), (-1, -2), colors.white),
+                ('BACKgROUND', (0, 1), (-1, -2), colors.white),
                 ('ALIGN', (0, 1), (0, -2), 'LEFT'),    # Sweet names left
                 ('ALIGN', (1, 1), (1, -2), 'CENTER'),  # Quantity center
                 ('ALIGN', (2, 1), (2, -2), 'CENTER'),  # Rate center
@@ -961,10 +961,10 @@ def generate_sales_report_pdf(date, sales_data, orders, filename="sales_report.p
                 ('FONTSIZE', (0, 1), (-1, -2), 10),
                 
                 # Alternating row colors like website
-                ('ROWBACKGROUNDS', (0, 1), (-1, -2), [colors.white, colors.HexColor('#F9FAFB')]),
+                ('ROWBACKgROUNDS', (0, 1), (-1, -2), [colors.white, colors.HexColor('#F9FAFB')]),
                 
-                # Grand Total row styling (gray background like website)
-                ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#F3F4F6')),
+                # Grand Total row styling (gray bacKground like website)
+                ('BACKgROUND', (0, -1), (-1, -1), colors.HexColor('#F3F4F6')),
                 ('FONTNAME', (0, -1), (-1, -1), unicode_font_bold),
                 ('FONTSIZE', (0, -1), (-1, -1), 12),
                 ('ALIGN', (2, -1), (2, -1), 'RIGHT'),  # "Grand Total:" right-aligned

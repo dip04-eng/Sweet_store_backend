@@ -60,9 +60,9 @@ def add_sweet(data):
         rate_val = 0
 
     # Validate and normalize unit field
-    unit = data.get("unit", "kg").strip().lower()
-    if unit not in ["piece", "kg"]:
-        unit = "kg"  # Default to 'kg' if invalid
+    unit = data.get("unit", "Kg").strip().lower()
+    if unit not in ["piece", "Kg"]:
+        unit = "Kg"  # Default to 'Kg' if invalid
 
     # Accept image from multiple keys: image, image_url, or imageUrl
     image_data = data.get("image") or data.get("image_url") or data.get("imageUrl") or ""
@@ -114,7 +114,7 @@ def get_sweets(category: str | None = None):
         if "category" not in d:
             d["category"] = "Uncategorized"
         if "unit" not in d:
-            d["unit"] = "kg"  # Default to 'kg' for backward compatibility
+            d["unit"] = "Kg"  # Default to 'Kg' for backward compatibility
         if "isFestival" not in d:
             d["isFestival"] = False  # Default to False for backward compatibility
 
@@ -153,7 +153,7 @@ def get_sweet_by_id(id_str: str):
     doc["_id"] = str(doc["_id"]) if doc.get("_id") is not None else None
     # Backfill unit for backward compatibility
     if "unit" not in doc:
-        doc["unit"] = "kg"
+        doc["unit"] = "Kg"
     
     # Normalize image field: ensure 'image' field exists
     # Support legacy records that may have 'image_url' or 'imageUrl'

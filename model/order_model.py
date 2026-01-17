@@ -168,10 +168,10 @@ def place_order(order):
         except (ValueError, TypeError):
             item["price"] = 0
         
-        # Store unit field (default to 'kg' if not provided)
-        unit = item.get("unit", "kg").strip().lower()
-        if unit not in ["piece", "kg"]:
-            unit = "kg"
+        # Store unit field (default to 'Kg' if not provided)
+        unit = item.get("unit", "Kg").strip().lower()
+        if unit not in ["piece", "Kg"]:
+            unit = "Kg"
         item["unit"] = unit
 
     order_collection.insert_one(order)
@@ -207,7 +207,7 @@ def _serialize_order(doc):
                 if "quantity" not in item:
                     item["quantity"] = 1
                 if "unit" not in item:
-                    item["unit"] = "kg"  # Default to 'kg' for backward compatibility
+                    item["unit"] = "Kg"  # Default to 'Kg' for backward compatibility
     
     return _serialize_datetimes(doc)
 
@@ -264,7 +264,7 @@ def get_daily_summary():
             continue
 
     total_items_sold = 0
-    total_kg_sold = 0
+    total_Kg_sold = 0
     total_pieces_sold = 0
     sweet_stats = {}
     
@@ -298,9 +298,9 @@ def get_daily_summary():
 
             total_items_sold += quantity_ordered
             
-            # Separate kg and pieces
-            if unit == "kg":
-                total_kg_sold += quantity_ordered
+            # Separate Kg and pieces
+            if unit == "Kg":
+                total_Kg_sold += quantity_ordered
             else:
                 total_pieces_sold += quantity_ordered
 
@@ -321,7 +321,7 @@ def get_daily_summary():
         "total_orders": total_orders,
         "total_revenue": total_revenue,
         "total_items_sold": total_items_sold,
-        "total_kg_sold": round(total_kg_sold, 2),
+        "total_Kg_sold": round(total_Kg_sold, 2),
         "total_pieces_sold": int(total_pieces_sold),
         "popular_sweets": popular_sweets[:5],
         "orders": serialized_orders
@@ -436,10 +436,10 @@ def edit_order(order_id: str, updates: dict):
                 except (ValueError, TypeError):
                     itm["price"] = 0
                 
-                # Store unit field (default to 'kg' if not provided)
-                unit = itm.get("unit", "kg").strip().lower()
-                if unit not in ["piece", "kg"]:
-                    unit = "kg"
+                # Store unit field (default to 'Kg' if not provided)
+                unit = itm.get("unit", "Kg").strip().lower()
+                if unit not in ["piece", "Kg"]:
+                    unit = "Kg"
                 itm["unit"] = unit
                 
                 norm_items.append(itm)

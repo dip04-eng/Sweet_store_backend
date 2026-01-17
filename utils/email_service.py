@@ -115,7 +115,7 @@ def send_order_invoice_to_manager(order_data, pdf_path):
     body = f"""
     <html>
     <body style="font-family: Arial, sans-serif; color: #333;">
-        <div style="background-color: #FFD700; padding: 20px; text-align: center;">
+        <div style="bacKground-color: #FFD700; padding: 20px; text-align: center;">
             <h1 style="color: #0D0D0D; margin: 0;">🍬 Mansoor Hotel & Sweets</h1>
         </div>
         
@@ -126,31 +126,31 @@ def send_order_invoice_to_manager(order_data, pdf_path):
             
             <table style="border-collapse: collapse; width: 100%; margin: 20px 0;">
                 <tr>
-                    <td style="padding: 10px; background-color: #FFF8DC; font-weight: bold;">Order ID:</td>
-                    <td style="padding: 10px; background-color: #FFFEF0;">{order_id}</td>
+                    <td style="padding: 10px; bacKground-color: #FFF8DC; font-weight: bold;">Order ID:</td>
+                    <td style="padding: 10px; bacKground-color: #FFFEF0;">{order_id}</td>
                 </tr>
                 <tr>
-                    <td style="padding: 10px; background-color: #FFF8DC; font-weight: bold;">Customer:</td>
-                    <td style="padding: 10px; background-color: #FFFEF0;">{customer_name}</td>
+                    <td style="padding: 10px; bacKground-color: #FFF8DC; font-weight: bold;">Customer:</td>
+                    <td style="padding: 10px; bacKground-color: #FFFEF0;">{customer_name}</td>
                 </tr>
                 <tr>
-                    <td style="padding: 10px; background-color: #FFF8DC; font-weight: bold;">Mobile:</td>
-                    <td style="padding: 10px; background-color: #FFFEF0;">{order_data.get('mobile', 'N/A')}</td>
+                    <td style="padding: 10px; bacKground-color: #FFF8DC; font-weight: bold;">Mobile:</td>
+                    <td style="padding: 10px; bacKground-color: #FFFEF0;">{order_data.get('mobile', 'N/A')}</td>
                 </tr>
                 <tr>
-                    <td style="padding: 10px; background-color: #FFF8DC; font-weight: bold;">Total Amount:</td>
-                    <td style="padding: 10px; background-color: #FFFEF0; font-size: 18px; font-weight: bold; color: #D2691E;">₹{total}</td>
+                    <td style="padding: 10px; bacKground-color: #FFF8DC; font-weight: bold;">Total Amount:</td>
+                    <td style="padding: 10px; bacKground-color: #FFFEF0; font-size: 18px; font-weight: bold; color: #D2691E;">₹{total}</td>
                 </tr>
                 <tr>
-                    <td style="padding: 10px; background-color: #FFF8DC; font-weight: bold;">Delivery Date:</td>
-                    <td style="padding: 10px; background-color: #FFFEF0;">{delivery_date}</td>
+                    <td style="padding: 10px; bacKground-color: #FFF8DC; font-weight: bold;">Delivery Date:</td>
+                    <td style="padding: 10px; bacKground-color: #FFFEF0;">{delivery_date}</td>
                 </tr>
             </table>
             
             <h3 style="color: #D2691E; margin-top: 30px;">Order Items:</h3>
             <table style="border-collapse: collapse; width: 100%; margin: 20px 0; border: 1px solid #ddd;">
                 <thead>
-                    <tr style="background-color: #D2691E; color: white;">
+                    <tr style="bacKground-color: #D2691E; color: white;">
                         <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Sweet Name</th>
                         <th style="padding: 12px; text-align: center; border: 1px solid #ddd;">Quantity</th>
                         <th style="padding: 12px; text-align: right; border: 1px solid #ddd;">Price</th>
@@ -160,14 +160,14 @@ def send_order_invoice_to_manager(order_data, pdf_path):
                     {''.join([f'''
                     <tr>
                         <td style="padding: 10px; border: 1px solid #ddd;">{item.get('sweetName', 'N/A')}</td>
-                        <td style="padding: 10px; text-align: center; border: 1px solid #ddd;">{item.get('quantity', 0)} {item.get('unit', 'kg')}</td>
+                        <td style="padding: 10px; text-align: center; border: 1px solid #ddd;">{item.get('quantity', 0)} {item.get('unit', 'Kg')}</td>
                         <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">₹{item.get('price', 0)}</td>
                     </tr>
                     ''' for item in items])}
                 </tbody>
             </table>
             
-            <p style="background-color: #FFF8DC; padding: 15px; border-left: 4px solid #FFD700;">
+            <p style="bacKground-color: #FFF8DC; padding: 15px; border-left: 4px solid #FFD700;">
                 <strong>📎 Invoice Attached:</strong> Please find the detailed invoice PDF attached to this email.
             </p>
             
@@ -176,7 +176,7 @@ def send_order_invoice_to_manager(order_data, pdf_path):
             </p>
         </div>
         
-        <div style="background-color: #F5F5DC; padding: 15px; text-align: center; margin-top: 20px;">
+        <div style="bacKground-color: #F5F5DC; padding: 15px; text-align: center; margin-top: 20px;">
             <p style="margin: 0; color: #666; font-size: 12px;">
                 This is an automated notification from Sweet Store Management System
             </p>
@@ -211,7 +211,7 @@ def send_contact_form_to_manager(contact_data):
     body = f"""
     <html>
     <body style="font-family: Arial, sans-serif; color: #333;">
-        <div style="background-color: #C41E3A; padding: 20px; text-align: center;">
+        <div style="bacKground-color: #C41E3A; padding: 20px; text-align: center;">
             <h1 style="color: white; margin: 0;">🍬 Mansoor Hotel & Sweets</h1>
         </div>
         
@@ -222,32 +222,32 @@ def send_contact_form_to_manager(contact_data):
             
             <table style="border-collapse: collapse; width: 100%; margin: 20px 0;">
                 <tr>
-                    <td style="padding: 12px; background-color: #FFF8DC; font-weight: bold; width: 150px;">Name:</td>
-                    <td style="padding: 12px; background-color: #FFFEF0;">{name}</td>
+                    <td style="padding: 12px; bacKground-color: #FFF8DC; font-weight: bold; width: 150px;">Name:</td>
+                    <td style="padding: 12px; bacKground-color: #FFFEF0;">{name}</td>
                 </tr>
                 <tr>
-                    <td style="padding: 12px; background-color: #FFF8DC; font-weight: bold;">Email:</td>
-                    <td style="padding: 12px; background-color: #FFFEF0;"><a href="mailto:{email}">{email}</a></td>
+                    <td style="padding: 12px; bacKground-color: #FFF8DC; font-weight: bold;">Email:</td>
+                    <td style="padding: 12px; bacKground-color: #FFFEF0;"><a href="mailto:{email}">{email}</a></td>
                 </tr>
                 <tr>
-                    <td style="padding: 12px; background-color: #FFF8DC; font-weight: bold;">Phone:</td>
-                    <td style="padding: 12px; background-color: #FFFEF0;">{phone}</td>
+                    <td style="padding: 12px; bacKground-color: #FFF8DC; font-weight: bold;">Phone:</td>
+                    <td style="padding: 12px; bacKground-color: #FFFEF0;">{phone}</td>
                 </tr>
             </table>
             
             <div style="margin: 20px 0;">
                 <h3 style="color: #C41E3A; margin-bottom: 10px;">Message:</h3>
-                <div style="background-color: #FFF8DC; padding: 20px; border-left: 4px solid #C41E3A; white-space: pre-wrap;">
+                <div style="bacKground-color: #FFF8DC; padding: 20px; border-left: 4px solid #C41E3A; white-space: pre-wrap;">
 {message}
                 </div>
             </div>
             
-            <p style="background-color: #FEF3E2; padding: 15px; border-left: 4px solid #C41E3A; margin-top: 20px;">
+            <p style="bacKground-color: #FEF3E2; padding: 15px; border-left: 4px solid #C41E3A; margin-top: 20px;">
                 <strong>💡 Action Required:</strong> Please respond to this inquiry at your earliest convenience.
             </p>
         </div>
         
-        <div style="background-color: #F5F5DC; padding: 15px; text-align: center; margin-top: 20px;">
+        <div style="bacKground-color: #F5F5DC; padding: 15px; text-align: center; margin-top: 20px;">
             <p style="margin: 0; color: #666; font-size: 12px;">
                 This is an automated notification from Mansoor Hotel & Sweets Contact Form
             </p>

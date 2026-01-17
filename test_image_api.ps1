@@ -106,7 +106,7 @@ $largeSweet = @{
     name = "Large Image Test $(Get-Date -Format 'HHmmss')"
     category = "Sweet"
     rate = 150
-    unit = "kg"
+    unit = "Kg"
     image = $largeBase64
     description = "Testing large base64 image handling"
 } | ConvertTo-Json

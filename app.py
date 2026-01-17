@@ -187,8 +187,8 @@ def admin_add_sweet():
     # Validate unit field if provided
     if "unit" in data:
         unit_value = str(data.get("unit", "")).strip().lower()
-        if unit_value not in ["piece", "kg"]:
-            return jsonify({"error": "Invalid unit. Must be 'piece' or 'kg'"}), 400
+        if unit_value not in ["piece", "Kg"]:
+            return jsonify({"error": "Invalid unit. Must be 'piece' or 'Kg'"}), 400
     
     # Validate image format if provided (accept from 'image', 'image_url', or 'imageUrl')
     image_data = data.get("image") or data.get("image_url") or data.get("imageUrl")
@@ -211,7 +211,7 @@ def admin_add_sweet():
             "rate": found.get("rate", 0),
             "description": found.get("description", ""),
             "image": found.get("image") or found.get("image_url") or found.get("imageUrl") or "",
-            "unit": found.get("unit", "kg"),
+            "unit": found.get("unit", "Kg"),
         }
         # Merge with overrides from the request body
         payload = {

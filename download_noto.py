@@ -1,7 +1,7 @@
 import urllib.request
 
 # Noto Sans supports Hindi and Rupee symbol
-url = 'https://noto-website-2.storage.googleapis.com/pkgs/NotoSans-unhinted.zip'
+url = 'https://noto-website-2.storage.googleapis.com/pKgs/NotoSans-unhinted.zip'
 
 print('Downloading Noto Sans font...')
 urllib.request.urlretrieve(url, 'NotoSans.zip')
