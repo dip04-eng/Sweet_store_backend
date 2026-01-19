@@ -60,8 +60,12 @@ def add_sweet(data):
         rate_val = 0
 
     # Validate and normalize unit field
-    unit = data.get("unit", "Kg").strip().lower()
-    if unit not in ["piece", "Kg"]:
+    unit_input = data.get("unit", "Kg").strip().lower()
+    if unit_input in ["kg", "kilogram"]:
+        unit = "Kg"
+    elif unit_input == "piece":
+        unit = "piece"
+    else:
         unit = "Kg"  # Default to 'Kg' if invalid
 
     # Accept image from multiple keys: image, image_url, or imageUrl

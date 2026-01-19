@@ -1,7 +1,7 @@
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.lib import colors
 from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, PageTemplate, Frame, KeepTogether
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 from reportlab.pdfbase import pdfmetrics
@@ -174,8 +174,76 @@ def generate_order_pdf(order_data, filename="invoice.pdf"):
     print(f"   Order Data Keys: {order_data.keys() if hasattr(order_data, 'keys') else 'Not a dict'}")
     
     try:
-        # Create PDF document
-        doc = SimpleDocTemplate(filename, pagesize=letter)
+        # Define custom page template with header
+        def add_page_header(canvas, doc):
+            """Add header with logo to every page"""
+            print(f"🎨 Order PDF: add_page_header called for page {doc.page}")
+            canvas.saveState()
+            
+            # Logo paths
+            try:
+                script_dir = os.path.dirname(os.path.abspath(__file__))
+                backend_dir = os.path.dirname(script_dir)
+                project_dir = os.path.dirname(backend_dir)
+                hotel_logo_path = os.path.join(project_dir, 'Sweet_store_frontend', 'public', 'hotel_logo2-removebg-preview.png')
+                name_logo_path = os.path.join(project_dir, 'Sweet_store_frontend', 'public', 'Name.png')
+                
+                # Center position for logos
+                page_width = letter[0]
+                center_x = page_width / 2
+                
+                # Calculate total width of both logos to center them as a group
+                total_logo_width = 3.5 * inch
+                start_x = center_x - (total_logo_width / 2)
+                
+                # Draw hotel logo (left side)
+                if os.path.exists(hotel_logo_path):
+                    canvas.drawImage(
+                        hotel_logo_path, 
+                        start_x, 
+                        letter[1] - 120, 
+                        width=1.5*inch, 
+                        height=1.5*inch, 
+                        preserveAspectRatio=True, 
+                        mask='auto'
+                    )
+                
+                # Draw name logo (right side, immediately after hotel logo)
+                if os.path.exists(name_logo_path):
+                    canvas.drawImage(
+                        name_logo_path, 
+                        start_x + 1.5*inch, 
+                        letter[1] - 100, 
+                        width=2*inch, 
+                        height=1*inch, 
+                        preserveAspectRatio=True, 
+                        mask='auto'
+                    )
+                
+            except Exception as e:
+                print(f"⚠️ Could not load logos in header: {e}")
+                # Fallback to text header
+                canvas.setFont('Helvetica-Bold', 16)
+                canvas.setFillColor(colors.HexColor('#FFD700'))
+                canvas.drawCentredString(page_width / 2, letter[1] - 70, "MANSOOR HOTEL N SWEETS")
+            
+            canvas.restoreState()
+        
+        # Create PDF document with custom page template
+        doc = SimpleDocTemplate(
+            filename, 
+            pagesize=letter,
+            leftMargin=50,
+            rightMargin=50,
+            topMargin=130,  # Increased to accommodate logo header
+            bottomMargin=50
+        )
+        
+        # Set up page template with header
+        frame = Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id='normal')
+        template = PageTemplate(id='header_template', frames=frame, onPage=add_page_header)
+        doc.addPageTemplates([template])
+        
         elements = []
         styles = getSampleStyleSheet()
         
@@ -208,47 +276,7 @@ def generate_order_pdf(order_data, filename="invoice.pdf"):
             leading=12
         )
         
-        # Add logos at top - hotel logo on left, name logo on right
-        try:
-            # Get logo paths from frontend public folder
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            backend_dir = os.path.dirname(script_dir)
-            project_dir = os.path.dirname(backend_dir)
-            hotel_logo_path = os.path.join(project_dir, 'Sweet_store_frontend', 'public', 'hotel_logo2-removebg-preview.png')
-            name_logo_path = os.path.join(project_dir, 'Sweet_store_frontend', 'public', 'Name.png')
-            
-            # Create logo table with two columns
-            logo_data = []
-            logo_row = []
-            
-            if os.path.exists(hotel_logo_path):
-                hotel_logo = Image(hotel_logo_path, width=1.5*inch, height=1.5*inch)
-                logo_row.append(hotel_logo)
-            else:
-                logo_row.append('')
-            
-            if os.path.exists(name_logo_path):
-                name_logo = Image(name_logo_path, width=2*inch, height=1*inch)
-                logo_row.append(name_logo)
-            else:
-                logo_row.append('')
-            
-            if logo_row:
-                logo_data.append(logo_row)
-                logo_table = Table(logo_data, colWidths=[1.6*inch, 2.1*inch])
-                logo_table.setStyle(TableStyle([
-                    ('ALIGN', (0, 0), (0, 0), 'RIGHT'),
-                    ('ALIGN', (1, 0), (1, 0), 'LEFT'),
-                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                    ('LEFTPADDING', (0, 0), (-1, -1), 0),
-                    ('RIGHTPADDING', (0, 0), (-1, -1), 0),
-                ]))
-                logo_table.hAlign = 'CENTER'
-                elements.append(logo_table)
-                elements.append(Spacer(1, 0.2*inch))
-        except Exception as e:
-            print(f"⚠️ Could not add logos: {e}")
-        
+        # Logos now in page header - will appear on every page
         # Subtitle (removed title)
         subtitle = Paragraph("Order Invoice", styles['Heading2'])
         elements.append(subtitle)
@@ -353,7 +381,7 @@ def generate_order_pdf(order_data, filename="invoice.pdf"):
         items_table = Table(items_data, colWidths=[0.5*inch, 2.5*inch, 1.2*inch, 1*inch, 1.3*inch])
         items_table.setStyle(TableStyle([
             # Header row
-            ('BACKgROUND', (0, 0), (-1, 0), colors.HexColor('#FFD700')),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#FFD700')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
             ('FONTSIZE', (0, 0), (-1, 0), 11),
             ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
@@ -365,7 +393,7 @@ def generate_order_pdf(order_data, filename="invoice.pdf"):
             
             # Total row
             ('FONTSIZE', (0, -1), (-1, -1), 12),
-            ('BACKgROUND', (0, -1), (-1, -1), colors.HexColor('#FFF8DC')),
+            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#FFF8DC')),
             ('TEXTCOLOR', (0, -1), (-1, -1), colors.HexColor('#D2691E')),
             
             # Grid
@@ -392,8 +420,8 @@ def generate_order_pdf(order_data, filename="invoice.pdf"):
         footer = Paragraph(footer_text, styles['Normal'])
         elements.append(footer)
         
-        # Build PDF
-        doc.build(elements)
+        # Build PDF with logo on every page
+        doc.build(elements, onFirstPage=add_page_header, onLaterPages=add_page_header)
         print(f"✅ PDF generated: {filename}")
         return filename
         
@@ -423,7 +451,77 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
         
         # Create PDF document
         buffer = BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=A4)
+        
+        # Define custom page template with header
+        def add_page_header(canvas, doc):
+            """Add header with logo to every page"""
+            print(f"🎨 Statement PDF: add_page_header called for page {doc.page}")
+            canvas.saveState()
+            
+            # Logo paths
+            try:
+                script_dir = os.path.dirname(os.path.abspath(__file__))
+                backend_dir = os.path.dirname(script_dir)
+                project_dir = os.path.dirname(backend_dir)
+                hotel_logo_path = os.path.join(project_dir, 'Sweet_store_frontend', 'public', 'hotel_logo2-removebg-preview.png')
+                name_logo_path = os.path.join(project_dir, 'Sweet_store_frontend', 'public', 'Name.png')
+                
+                # Center position for logos
+                page_width = A4[0]
+                center_x = page_width / 2
+                
+                # Calculate total width of both logos to center them as a group
+                total_logo_width = 3.5 * inch
+                start_x = center_x - (total_logo_width / 2)
+                
+                # Draw hotel logo (left side)
+                if os.path.exists(hotel_logo_path):
+                    canvas.drawImage(
+                        hotel_logo_path, 
+                        start_x, 
+                        A4[1] - 120, 
+                        width=1.5*inch, 
+                        height=1.5*inch, 
+                        preserveAspectRatio=True, 
+                        mask='auto'
+                    )
+                
+                # Draw name logo (right side, immediately after hotel logo)
+                if os.path.exists(name_logo_path):
+                    canvas.drawImage(
+                        name_logo_path, 
+                        start_x + 1.5*inch, 
+                        A4[1] - 100, 
+                        width=2*inch, 
+                        height=1*inch, 
+                        preserveAspectRatio=True, 
+                        mask='auto'
+                    )
+                
+            except Exception as e:
+                print(f"⚠️ Could not load logos in header: {e}")
+                # Fallback to text header
+                canvas.setFont('Helvetica-Bold', 16)
+                canvas.setFillColor(colors.HexColor('#9333EA'))
+                canvas.drawCentredString(page_width / 2, A4[1] - 70, "MANSOOR HOTEL N SWEETS")
+            
+            canvas.restoreState()
+        
+        # Create document with custom page template
+        doc = SimpleDocTemplate(
+            buffer, 
+            pagesize=A4,
+            leftMargin=50,
+            rightMargin=50,
+            topMargin=130,  # Increased to accommodate logo header
+            bottomMargin=50
+        )
+        
+        # Set up page template with header
+        frame = Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id='normal')
+        template = PageTemplate(id='header_template', frames=frame, onPage=add_page_header)
+        doc.addPageTemplates([template])
+        
         elements = []
         styles = getSampleStyleSheet()
         
@@ -458,48 +556,7 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
             spaceAfter=10
         )
         
-        # Add logos at top - hotel logo on left, name logo on right
-        try:
-            # Get logo paths from frontend public folder
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            backend_dir = os.path.dirname(script_dir)
-            project_dir = os.path.dirname(backend_dir)
-            hotel_logo_path = os.path.join(project_dir, 'Sweet_store_frontend', 'public', 'hotel_logo2-removebg-preview.png')
-            name_logo_path = os.path.join(project_dir, 'Sweet_store_frontend', 'public', 'Name.png')
-            
-            # Create logo table with two columns
-            logo_data = []
-            logo_row = []
-            
-            if os.path.exists(hotel_logo_path):
-                hotel_logo = Image(hotel_logo_path, width=1.5*inch, height=1.5*inch)
-                logo_row.append(hotel_logo)
-            else:
-                logo_row.append('')
-            
-            if os.path.exists(name_logo_path):
-                name_logo = Image(name_logo_path, width=2*inch, height=1*inch)
-                logo_row.append(name_logo)
-            else:
-                logo_row.append('')
-            
-            if logo_row:
-                logo_data.append(logo_row)
-                logo_table = Table(logo_data, colWidths=[1.6*inch, 2.1*inch])
-                logo_table.setStyle(TableStyle([
-                    ('ALIGN', (0, 0), (0, 0), 'RIGHT'),
-                    ('ALIGN', (1, 0), (1, 0), 'LEFT'),
-                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                    ('LEFTPADDING', (0, 0), (-1, -1), 0),
-                    ('RIGHTPADDING', (0, 0), (-1, -1), 0),
-                ]))
-                logo_table.hAlign = 'CENTER'
-                elements.append(logo_table)
-                elements.append(Spacer(1, 0.2*inch))
-        except Exception as e:
-            print(f"⚠️ Could not add logos: {e}")
-        
-        # Sales Statement subtitle
+        # Sales Statement subtitle (logos now in page header)
         sales_statement = Paragraph("Sales Statement", subtitle_style)
         elements.append(sales_statement)
         
@@ -563,21 +620,32 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
             leading=14
         )
         
+        # Wrap summary data in Paragraphs to ensure proper font usage
         summary_data = [
-            ['Total Orders', 'Total Amount', 'Advance Paid', 'Amount Due'],
-            [str(total_orders), f"₹{total_amount:,.2f}", f"₹{total_advance:,.2f}", f"₹{total_due:,.2f}"]
+            [
+                Paragraph('Total Orders', cell_style),
+                Paragraph('Total Amount', cell_style),
+                Paragraph('Advance Paid', cell_style),
+                Paragraph('Amount Due', cell_style)
+            ],
+            [
+                Paragraph(str(total_orders), cell_style_bold),
+                Paragraph(f"₹{total_amount:,.2f}", cell_style_bold),
+                Paragraph(f"₹{total_advance:,.2f}", cell_style_bold),
+                Paragraph(f"₹{total_due:,.2f}", cell_style_bold)
+            ]
         ]
         
-        summary_table = Table(summary_data, colWidths=[1.5*inch, 1.5*inch, 1.5*inch, 1.5*inch])
+        summary_table = Table(summary_data, colWidths=[1.5*inch, 1.5*inch, 1.5*inch, 1.5*inch], repeatRows=1)
         summary_table.setStyle(TableStyle([
-            ('BACKgROUND', (0, 0), (-1, 0), colors.HexColor('#9333EA')),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#9333EA')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
             ('FONT', (0, 0), (-1, 0), ENGLISH_FONT),
             ('FONTSIZE', (0, 0), (-1, 0), 10),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('FONT', (0, 1), (-1, 1), ENGLISH_FONT),
             ('FONTSIZE', (0, 1), (-1, 1), 12),
-            ('BACKgROUND', (0, 1), (-1, 1), colors.HexColor('#F3E8FF')),
+            ('BACKGROUND', (0, 1), (-1, 1), colors.HexColor('#F3E8FF')),
             ('TEXTCOLOR', (3, 1), (3, 1), colors.HexColor('#DC2626')),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
             ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#9333EA')),
@@ -586,7 +654,8 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
             ('TOPPADDING', (0, 0), (-1, -1), 10),
         ]))
         
-        elements.append(summary_table)
+        # Keep summary table together on same page
+        elements.append(KeepTogether([summary_table]))
         elements.append(Spacer(1, 0.3*inch))
         
         # ===== TOTAL SWEETS SOLD SECTION =====
@@ -649,16 +718,10 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
             Paragraph(f"₹{total_amount:,.2f}", cell_style_bold)
         ])
         
-        # Widen the Sweet Name column to fit both English and Hindi
-        # Further widen the Sweet Name column for long Hindi/English names
-        # Maximize Sweet Name column width and slightly reduce others
-        # Set Sweet Name column to maximum width for long names
-        # Set a large fixed width for Sweet Name and smaller for others to prevent overlay
-        # Use percentages for column widths to allow dynamic sizing
-        # Make all columns dynamic, letting ReportLab auto-size based on content
-        sweets_table = Table(sweets_data)
+        # Sweets table with repeatRows to ensure header repeats on each page
+        sweets_table = Table(sweets_data, repeatRows=1)
         sweets_table_style = [
-            ('BACKgROUND', (0, 0), (-1, 0), colors.HexColor('#EC4899')),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#EC4899')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
             ('FONTSIZE', (0, 0), (-1, 0), 10),
             ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
@@ -667,7 +730,7 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
             ('ALIGN', (2, 1), (2, -1), 'CENTER'),
             ('ALIGN', (3, 1), (3, -1), 'RIGHT'),
             # Grand total row
-            ('BACKgROUND', (0, -1), (-1, -1), colors.HexColor('#FDF2F8')),
+            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#FDF2F8')),
             ('FONTSIZE', (0, -1), (-1, -1), 10),
             ('TEXTCOLOR', (0, -1), (-1, -1), colors.HexColor('#9333EA')),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
@@ -680,7 +743,7 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
         # Alternating row colors
         for i in range(1, len(sweets_data) - 1):
             if i % 2 == 0:
-                sweets_table_style.append(('BACKgROUND', (0, i), (-1, i), colors.HexColor('#FDF2F8')))
+                sweets_table_style.append(('BACKGROUND', (0, i), (-1, i), colors.HexColor('#FDF2F8')))
         
         sweets_table.setStyle(TableStyle(sweets_table_style))
         elements.append(sweets_table)
@@ -748,10 +811,10 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
                 Paragraph(f"₹{due:,.0f}", cell_style)
             ])
         
-        customer_table = Table(customer_data, colWidths=[0.35*inch, 1.0*inch, 1.1*inch, 0.9*inch, 2*inch, 0.8*inch, 0.8*inch, 0.8*inch])
+        customer_table = Table(customer_data, colWidths=[0.35*inch, 1.0*inch, 1.1*inch, 0.9*inch, 2*inch, 0.8*inch, 0.8*inch, 0.8*inch], repeatRows=1)
         
         customer_table_style = [
-            ('BACKgROUND', (0, 0), (-1, 0), colors.HexColor('#9333EA')),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#9333EA')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
             ('FONTSIZE', (0, 0), (-1, 0), 8),
             ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
@@ -769,7 +832,7 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
         # Alternating row colors and highlight due amounts
         for i in range(1, len(customer_data)):
             if i % 2 == 0:
-                customer_table_style.append(('BACKgROUND', (0, i), (-1, i), colors.HexColor('#F9FAFB')))
+                customer_table_style.append(('BACKGROUND', (0, i), (-1, i), colors.HexColor('#F9FAFB')))
             # Highlight due > 0 in red
             order = sorted_orders[i-1]
             due = order.get('total', 0) - order.get('advancePaid', 0)
@@ -780,20 +843,25 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
         elements.append(customer_table)
         elements.append(Spacer(1, 0.3*inch))
         
-        # Footer
+        # Footer with proper font for rupee symbol
+        footer_style = ParagraphStyle(
+            'Footer',
+            parent=styles['Normal'],
+            fontName=ENGLISH_FONT,
+            fontSize=9,
+            textColor=colors.HexColor('#666666'),
+            alignment=TA_CENTER
+        )
+        
         footer_text = f"""
-        <para align=center>
-        <font size=9 color="#666666">
         Mansoor Hotel and Sweets - Sales Statement<br/>
         Total Orders: {total_orders} | Total Sweets: {len(sweets_sold)} types | Amount Due: ₹{total_due:,.2f}
-        </font>
-        </para>
         """
-        footer = Paragraph(footer_text, styles['Normal'])
+        footer = Paragraph(footer_text, footer_style)
         elements.append(footer)
         
-        # Build PDF
-        doc.build(elements)
+        # Build PDF with logo on every page
+        doc.build(elements, onFirstPage=add_page_header, onLaterPages=add_page_header)
         
         # Get PDF bytes
         pdf_bytes = buffer.getvalue()
@@ -811,7 +879,7 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
 
 def generate_sales_report_pdf(date, sales_data, orders, filename="sales_report.pdf"):
     """
-    Generate a PDF sales report matching the exact website display format.
+    Generate a PDF sales report matching the exact website display format with logo header on every page.
     """
     print(f"📊 generate_sales_report_pdf called")
     print(f"   Date: {date}")
@@ -819,10 +887,83 @@ def generate_sales_report_pdf(date, sales_data, orders, filename="sales_report.p
     
     try:
         from io import BytesIO
+        from reportlab.platypus import PageTemplate, Frame
+        from reportlab.lib.utils import ImageReader
+        import base64
         
-        # Create PDF document
+        # Create PDF document with custom page template
         buffer = BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=50, rightMargin=50, topMargin=50, bottomMargin=50)
+        
+        # Define custom page template with header
+        def add_page_header(canvas, doc):
+            """Add header with logo to every page - matching order PDF style"""
+            canvas.saveState()
+            
+            # Logo paths - same as order PDF
+            try:
+                script_dir = os.path.dirname(os.path.abspath(__file__))
+                backend_dir = os.path.dirname(script_dir)
+                project_dir = os.path.dirname(backend_dir)
+                hotel_logo_path = os.path.join(project_dir, 'Sweet_store_frontend', 'public', 'hotel_logo2-removebg-preview.png')
+                name_logo_path = os.path.join(project_dir, 'Sweet_store_frontend', 'public', 'Name.png')
+                
+                # Center position for logos (like order PDF)
+                page_width = A4[0]
+                center_x = page_width / 2
+                
+                # Calculate total width of both logos to center them as a group
+                # Hotel logo: 1.5 inches, Name logo: 2.0 inches, Total: 3.5 inches
+                total_logo_width = 3.5 * inch
+                start_x = center_x - (total_logo_width / 2)
+                
+                # Draw hotel logo (left side) - shifted down
+                if os.path.exists(hotel_logo_path):
+                    canvas.drawImage(
+                        hotel_logo_path, 
+                        start_x, 
+                        A4[1] - 120, 
+                        width=1.5*inch, 
+                        height=1.5*inch, 
+                        preserveAspectRatio=True, 
+                        mask='auto'
+                    )
+                
+                # Draw name logo (right side, immediately after hotel logo) - shifted down
+                if os.path.exists(name_logo_path):
+                    canvas.drawImage(
+                        name_logo_path, 
+                        start_x + 1.5*inch, 
+                        A4[1] - 100, 
+                        width=2*inch, 
+                        height=1*inch, 
+                        preserveAspectRatio=True, 
+                        mask='auto'
+                    )
+                
+            except Exception as e:
+                print(f"⚠️ Could not load logos in header: {e}")
+                # Fallback to text header
+                canvas.setFont('Helvetica-Bold', 16)
+                canvas.setFillColor(colors.HexColor('#8B5CF6'))
+                canvas.drawCentredString(page_width / 2, A4[1] - 70, "MANSOOR HOTEL N SWEETS")
+            
+            canvas.restoreState()
+        
+        # Create document with custom page template
+        doc = SimpleDocTemplate(
+            buffer, 
+            pagesize=A4, 
+            leftMargin=50, 
+            rightMargin=50, 
+            topMargin=120,  # Increased to accommodate logo header (1.5 inch logo height + spacing)
+            bottomMargin=50
+        )
+        
+        # Set up page template with header
+        frame = Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id='normal')
+        template = PageTemplate(id='header_template', frames=frame, onPage=add_page_header)
+        doc.addPageTemplates([template])
+        
         elements = []
         styles = getSampleStyleSheet()
         
@@ -867,18 +1008,39 @@ def generate_sales_report_pdf(date, sales_data, orders, filename="sales_report.p
             spaceBefore=20
         )
         
-        # Title and Date
-        elements.append(Paragraph("🍰 Mansoor Hotel & Sweets", title_style))
-        elements.append(Paragraph(f"Daily Sales Report - {date}", subtitle_style))
+        # Title and Date (Company name now in header)
+        title_style_report = ParagraphStyle(
+            'ReportTitle',
+            parent=styles['Heading1'],
+            fontName=unicode_font_bold,
+            fontSize=16,
+            textColor=colors.HexColor('#8B5CF6'),
+            spaceAfter=5,
+            alignment=TA_CENTER,
+            spaceBefore=0
+        )
+        
+        elements.append(Paragraph("Daily Sales Report", title_style_report))
+        elements.append(Paragraph(f"{date}", subtitle_style))
+        
+        # Handle empty or None sales_data
+        if not sales_data:
+            sales_data = {
+                'total_amount': 0,
+                'total_orders': 0,
+                'total_sweets_sold': 0,
+                'avg_order_value': 0,
+                'sweets_breakdown': []
+            }
         
         # Sales Summary Section - 4 Cards Layout
         elements.append(Paragraph("📊 Sales Summary", header_style))
         
         # Create 2x2 grid for summary cards (exactly like website)
-        total_revenue = sales_data.get('total_amount', 0)
-        total_orders = sales_data.get('total_orders', 0)
-        items_sold = sales_data.get('total_sweets_sold', 0)
-        avg_order_value = sales_data.get('avg_order_value', 0)
+        total_revenue = sales_data.get('total_amount', 0) or 0
+        total_orders = sales_data.get('total_orders', 0) or 0
+        items_sold = sales_data.get('total_sweets_sold', 0) or 0
+        avg_order_value = sales_data.get('avg_order_value', 0) or 0
         
         summary_data = [
             [
@@ -894,10 +1056,10 @@ def generate_sales_report_pdf(date, sales_data, orders, filename="sales_report.p
         summary_table = Table(summary_data, colWidths=[2.8*inch, 2.8*inch])
         summary_table.setStyle(TableStyle([
             # Card styling to match website
-            ('BACKgROUND', (0, 0), (0, 0), colors.HexColor('#A855F7')),  # Purple card
-            ('BACKgROUND', (1, 0), (1, 0), colors.HexColor('#3B82F6')),  # Blue card  
-            ('BACKgROUND', (0, 1), (0, 1), colors.HexColor('#10B981')),  # Green card
-            ('BACKgROUND', (1, 1), (1, 1), colors.HexColor('#F97316')),  # Orange card
+            ('BACKGROUND', (0, 0), (0, 0), colors.HexColor('#A855F7')),  # Purple card
+            ('BACKGROUND', (1, 0), (1, 0), colors.HexColor('#3B82F6')),  # Blue card  
+            ('BACKGROUND', (0, 1), (0, 1), colors.HexColor('#10B981')),  # Green card
+            ('BACKGROUND', (1, 1), (1, 1), colors.HexColor('#F97316')),  # Orange card
             ('TEXTCOLOR', (0, 0), (-1, -1), colors.white),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
@@ -941,8 +1103,8 @@ def generate_sales_report_pdf(date, sales_data, orders, filename="sales_report.p
             # Create table with exact website styling
             breakdown_table = Table(breakdown_data, colWidths=[2.2*inch, 1.2*inch, 1.3*inch, 1.3*inch])
             breakdown_table.setStyle(TableStyle([
-                # Header styling (gray bacKground like website)
-                ('BACKgROUND', (0, 0), (-1, 0), colors.HexColor('#D1D5DB')),
+                # Header styling (gray BACKGROUND like website)
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#D1D5DB')),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#374151')),
                 ('ALIGN', (0, 0), (0, 0), 'LEFT'),    # Sweet Name left
                 ('ALIGN', (1, 0), (1, 0), 'CENTER'),  # Quantity center
@@ -952,7 +1114,7 @@ def generate_sales_report_pdf(date, sales_data, orders, filename="sales_report.p
                 ('FONTSIZE', (0, 0), (-1, 0), 11),
                 
                 # Data rows styling
-                ('BACKgROUND', (0, 1), (-1, -2), colors.white),
+                ('BACKGROUND', (0, 1), (-1, -2), colors.white),
                 ('ALIGN', (0, 1), (0, -2), 'LEFT'),    # Sweet names left
                 ('ALIGN', (1, 1), (1, -2), 'CENTER'),  # Quantity center
                 ('ALIGN', (2, 1), (2, -2), 'CENTER'),  # Rate center
@@ -961,10 +1123,10 @@ def generate_sales_report_pdf(date, sales_data, orders, filename="sales_report.p
                 ('FONTSIZE', (0, 1), (-1, -2), 10),
                 
                 # Alternating row colors like website
-                ('ROWBACKgROUNDS', (0, 1), (-1, -2), [colors.white, colors.HexColor('#F9FAFB')]),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -2), [colors.white, colors.HexColor('#F9FAFB')]),
                 
-                # Grand Total row styling (gray bacKground like website)
-                ('BACKgROUND', (0, -1), (-1, -1), colors.HexColor('#F3F4F6')),
+                # Grand Total row styling (gray BACKGROUND like website)
+                ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#F3F4F6')),
                 ('FONTNAME', (0, -1), (-1, -1), unicode_font_bold),
                 ('FONTSIZE', (0, -1), (-1, -1), 12),
                 ('ALIGN', (2, -1), (2, -1), 'RIGHT'),  # "Grand Total:" right-aligned
