@@ -184,9 +184,9 @@ def generate_order_pdf(order_data, filename="invoice.pdf"):
             try:
                 script_dir = os.path.dirname(os.path.abspath(__file__))
                 backend_dir = os.path.dirname(script_dir)
-                project_dir = os.path.dirname(backend_dir)
-                hotel_logo_path = os.path.join(project_dir, 'Sweet_store_frontend', 'public', 'hotel_logo2-removebg-preview.png')
-                name_logo_path = os.path.join(project_dir, 'Sweet_store_frontend', 'public', 'Name.png')
+                static_dir = os.path.join(backend_dir, 'static')
+                hotel_logo_path = os.path.join(static_dir, 'hotel_logo.png')
+                name_logo_path = os.path.join(static_dir, 'name_logo.png')
                 
                 # Center position for logos
                 page_width = letter[0]
@@ -462,9 +462,9 @@ def generate_orders_statement_pdf(orders, filters, filename="statement.pdf"):
             try:
                 script_dir = os.path.dirname(os.path.abspath(__file__))
                 backend_dir = os.path.dirname(script_dir)
-                project_dir = os.path.dirname(backend_dir)
-                hotel_logo_path = os.path.join(project_dir, 'Sweet_store_frontend', 'public', 'hotel_logo2-removebg-preview.png')
-                name_logo_path = os.path.join(project_dir, 'Sweet_store_frontend', 'public', 'Name.png')
+                static_dir = os.path.join(backend_dir, 'static')
+                hotel_logo_path = os.path.join(static_dir, 'hotel_logo.png')
+                name_logo_path = os.path.join(static_dir, 'name_logo.png')
                 
                 # Center position for logos
                 page_width = A4[0]
@@ -903,9 +903,9 @@ def generate_sales_report_pdf(date, sales_data, orders, filename="sales_report.p
             try:
                 script_dir = os.path.dirname(os.path.abspath(__file__))
                 backend_dir = os.path.dirname(script_dir)
-                project_dir = os.path.dirname(backend_dir)
-                hotel_logo_path = os.path.join(project_dir, 'Sweet_store_frontend', 'public', 'hotel_logo2-removebg-preview.png')
-                name_logo_path = os.path.join(project_dir, 'Sweet_store_frontend', 'public', 'Name.png')
+                static_dir = os.path.join(backend_dir, 'static')
+                hotel_logo_path = os.path.join(static_dir, 'hotel_logo.png')
+                name_logo_path = os.path.join(static_dir, 'name_logo.png')
                 
                 # Center position for logos (like order PDF)
                 page_width = A4[0]
