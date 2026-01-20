@@ -378,7 +378,11 @@ def generate_order_pdf(order_data, filename="invoice.pdf"):
             Paragraph(f"₹{total_amount}", cell_style)
         ])
         
-        items_table = Table(items_data, colWidths=[0.5*inch, 2.5*inch, 1.2*inch, 1*inch, 1.3*inch])
+        # Calculate dynamic column width for Sweet Name based on content
+        max_name_len = max(len(str(row[1].text if hasattr(row[1], 'text') else row[1])) for row in items_data) if items_data else 20
+        sweet_col_width = max(2.5*inch, min(3.2*inch, max_name_len * 0.07 * inch))
+        
+        items_table = Table(items_data, colWidths=[0.5*inch, sweet_col_width, 1.1*inch, 0.9*inch, 1.2*inch])
         items_table.setStyle(TableStyle([
             # Header row
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#FFD700')),
@@ -1100,8 +1104,14 @@ def generate_sales_report_pdf(date, sales_data, orders, filename="sales_report.p
             # Add Grand Total row (exactly like website)
             breakdown_data.append(['', '', 'Grand Total:', f"₹{total_revenue:.2f}"])
             
-            # Create table with exact website styling
-            breakdown_table = Table(breakdown_data, colWidths=[2.2*inch, 1.2*inch, 1.3*inch, 1.3*inch])
+            # Calculate dynamic column width for Sweet Name based on longest name
+            max_name_length = max(len(str(row[0])) for row in breakdown_data) if breakdown_data else 20
+            # Minimum 2.5 inch, scale up based on content (roughly 0.08 inch per character)
+            sweet_name_width = max(2.8*inch, min(3.5*inch, max_name_length * 0.08 * inch))
+            remaining_width = 6.0*inch - sweet_name_width  # Total available width minus sweet name
+            
+            # Create table with dynamic Sweet Name column width
+            breakdown_table = Table(breakdown_data, colWidths=[sweet_name_width, remaining_width*0.3, remaining_width*0.35, remaining_width*0.35])
             breakdown_table.setStyle(TableStyle([
                 # Header styling (gray BACKGROUND like website)
                 ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#D1D5DB')),
