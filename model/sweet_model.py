@@ -188,8 +188,9 @@ def update_sweet(sweet_id, data):
         # Update basic fields if provided
         if "name" in data:
             update_data["name"] = data["name"]
+        # Handle price update - store as 'rate' to match add_sweet and frontend
         if "price" in data:
-            update_data["price"] = float(data["price"])
+            update_data["rate"] = float(data["price"])
         if "unit" in data:
             update_data["unit"] = data["unit"]
         if "category" in data:
