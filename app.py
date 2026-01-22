@@ -187,7 +187,7 @@ def admin_add_sweet():
     # Validate unit field if provided
     if "unit" in data:
         unit_value = str(data.get("unit", "")).strip().lower()
-        if unit_value not in ["piece", "Kg"]:
+        if unit_value not in ["piece", "kg"]:
             return jsonify({"error": "Invalid unit. Must be 'piece' or 'Kg'"}), 400
     
     # Validate image format if provided (accept from 'image', 'image_url', or 'imageUrl')
