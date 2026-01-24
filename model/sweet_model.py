@@ -4,6 +4,7 @@ import os
 from dotenv import load_dotenv
 import ssl
 import re
+import time
 
 load_dotenv()
 
@@ -22,10 +23,24 @@ ssl_context.check_hostname = False
 ssl_context.verify_mode = ssl.CERT_NONE
 ssl_context.options |= 0x4  # OP_LEGACY_SERVER_CONNECT
 
-# MongoDB connection with safer TLS handling
+# Simple in-memory cache for sweets (reduces MongoDB calls)
+_sweets_cache = {
+    "data": None,
+    "timestamp": 0,
+    "ttl": 60  # Cache for 60 seconds
+}
+
+# MongoDB connection with optimized settings for faster response
 try:
     mongo_kwargs = {
-        "serverSelectionTimeoutMS": 30000,
+        "serverSelectionTimeoutMS": 10000,  # Reduced from 30s to 10s
+        "connectTimeoutMS": 10000,
+        "socketTimeoutMS": 20000,
+        "maxPoolSize": 10,  # Connection pooling
+        "minPoolSize": 1,
+        "maxIdleTimeMS": 45000,
+        "retryWrites": True,
+        "w": "majority",
     }
     # Enable TLS only for SRV (Atlas) URIs or when explicitly provided in URI
     if MONGO_URI.startswith("mongodb+srv://"):
@@ -44,6 +59,14 @@ except Exception as e:
 
 db = client["sweet_store"] if client is not None else None
 sweet_collection = db["sweets"] if db is not None else None
+
+
+def clear_sweets_cache():
+    """Clear the sweets cache to force fresh data on next request."""
+    global _sweets_cache
+    _sweets_cache["data"] = None
+    _sweets_cache["timestamp"] = 0
+    print("🗑️ Sweets cache cleared")
 
 
 def add_sweet(data):
@@ -97,15 +120,31 @@ def add_sweet(data):
 
     result = sweet_collection.insert_one(doc)
     print(f"✅ Sweet '{doc['name']}' added successfully with ID: {result.inserted_id}")
+    clear_sweets_cache()  # Clear cache when new sweet is added
 
 def get_sweets(category: str | None = None):
     """Get sweets from the database with optional category filter.
     Includes '_id' (as string) and ensures 'category' in the result.
     Returns complete image field without modification.
+    Uses in-memory caching to reduce database calls.
     """
+    global _sweets_cache
+    
     if sweet_collection is None:
         print("⚠️ Database not connected; returning empty sweets list")
         return []
+    
+    current_time = time.time()
+    
+    # Check cache for requests without category filter
+    if not category and _sweets_cache["data"] is not None:
+        cache_age = current_time - _sweets_cache["timestamp"]
+        if cache_age < _sweets_cache["ttl"]:
+            print(f"⚡ Returning cached sweets ({len(_sweets_cache['data'])} items, age: {cache_age:.1f}s)")
+            return _sweets_cache["data"]
+    
+    start_time = time.time()
+    
     query = {}
     if category:
         # Case-insensitive CONTAINS match for robustness (e.g., "din" matches "Dinner")
@@ -113,6 +152,10 @@ def get_sweets(category: str | None = None):
         if cat:
             query["category"] = re.compile(re.escape(cat), re.IGNORECASE)
     docs = list(sweet_collection.find(query))
+    
+    db_time = time.time() - start_time
+    print(f"⏱️ Database query took {db_time:.2f}s for {len(docs)} items")
+    
     # Backfill category and unit for older records, normalize image field
     for d in docs:
         if d.get("_id") is not None:
@@ -138,7 +181,12 @@ def get_sweets(category: str | None = None):
         # Log image info for debugging (only first sweet to avoid spam)
         if docs.index(d) == 0 and d.get("image"):
             print(f"📸 Returning sweet '{d.get('name')}' - Image length: {len(d['image'])} characters")
-            print(f"   Image starts with: {d['image'][:50]}...")
+    
+    # Cache the result (only for non-filtered queries)
+    if not category:
+        _sweets_cache["data"] = docs
+        _sweets_cache["timestamp"] = current_time
+        print(f"💾 Cached {len(docs)} sweets")
     
     return docs
 
@@ -181,10 +229,14 @@ def remove_sweet(name=None, sweet_id=None):
             return False
         result = sweet_collection.delete_one({"_id": oid})
         print(f"🟢 remove_sweet: deleted by id {sweet_id}, deleted count: {result.deleted_count}")
+        if result.deleted_count > 0:
+            clear_sweets_cache()  # Clear cache when sweet is removed
         return result.deleted_count > 0
     elif name:
         result = sweet_collection.delete_one({"name": name})
         print(f"🟢 remove_sweet: deleted by name '{name}', deleted count: {result.deleted_count}")
+        if result.deleted_count > 0:
+            clear_sweets_cache()  # Clear cache when sweet is removed
         return result.deleted_count > 0
     else:
         print("❌ remove_sweet: no id or name provided")
@@ -225,6 +277,7 @@ def update_sweet(sweet_id, data):
         if result.modified_count == 0:
             raise ValueError("Sweet not found or no changes made")
         
+        clear_sweets_cache()  # Clear cache when sweet is updated
         return True
         
     except Exception as e:
