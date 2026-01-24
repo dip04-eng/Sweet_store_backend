@@ -82,6 +82,8 @@ def add_sweet(data):
     else:
         print(f"⚠️ No image provided for '{data.get('name', 'Unknown')}'")
 
+    is_festival = bool(data.get("isFestival", False))
+    print(f"🟡 add_sweet: isFestival received = {data.get('isFestival')}, stored = {is_festival}")
     doc = {
         "name": data.get("name", "").strip(),
         "rate": rate_val,
@@ -90,7 +92,7 @@ def add_sweet(data):
         "image": image_data,
         "category": data.get("category", "").strip(),
         "unit": unit,
-        "isFestival": bool(data.get("isFestival", False)),
+        "isFestival": is_festival,
     }
 
     result = sweet_collection.insert_one(doc)
