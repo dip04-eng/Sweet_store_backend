@@ -244,14 +244,21 @@ def admin_add_sweet():
 @app.route("/admin/remove_sweet", methods=["DELETE"])
 def admin_remove_sweet():
     """Remove a sweet from the inventory."""
+    sweet_id = request.args.get("id")
     name = request.args.get("name")
-    
-    if not name:
-        return jsonify({"error": "Sweet name is required"}), 400
-    
+    if not sweet_id and not name:
+        return jsonify({"error": "Sweet id or name is required"}), 400
     try:
-        remove_sweet(name)
-        return jsonify({"message": f"Sweet '{name}' removed successfully"}), 200
+        if sweet_id:
+            from bson import ObjectId
+            result = remove_sweet(sweet_id=sweet_id)
+            if result:
+                return jsonify({"message": f"Sweet with id '{sweet_id}' removed successfully"}), 200
+            else:
+                return jsonify({"error": "Sweet not found"}), 404
+        else:
+            remove_sweet(name=name)
+            return jsonify({"message": f"Sweet '{name}' removed successfully"}), 200
     except Exception as e:
         return jsonify({"error": f"Failed to remove sweet: {str(e)}"}), 500
 

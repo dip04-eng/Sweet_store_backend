@@ -168,11 +168,27 @@ def get_sweet_by_id(id_str: str):
     
     return doc
 
-def remove_sweet(name):
-    """Remove a sweet from the database by name."""
+def remove_sweet(name=None, sweet_id=None):
+    """Remove a sweet from the database by name or id."""
     if sweet_collection is None:
         raise RuntimeError("Database not connected: cannot remove sweet")
-    sweet_collection.delete_one({"name": name})
+    if sweet_id:
+        from bson import ObjectId
+        try:
+            oid = ObjectId(sweet_id)
+        except Exception:
+            print(f"❌ Invalid sweet_id: {sweet_id}")
+            return False
+        result = sweet_collection.delete_one({"_id": oid})
+        print(f"🟢 remove_sweet: deleted by id {sweet_id}, deleted count: {result.deleted_count}")
+        return result.deleted_count > 0
+    elif name:
+        result = sweet_collection.delete_one({"name": name})
+        print(f"🟢 remove_sweet: deleted by name '{name}', deleted count: {result.deleted_count}")
+        return result.deleted_count > 0
+    else:
+        print("❌ remove_sweet: no id or name provided")
+        return False
 
 def update_sweet(sweet_id, data):
     """Update an existing sweet in the database."""
