@@ -12,9 +12,9 @@ load_dotenv(".env")
 
 app = Flask(__name__)
 
-# Configure CORS to allow requests from frontend and handle large responses
+# Configure CORS to allow ALL local origins during development
 CORS(app, 
-     origins=["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173", "https://server.uemcseaiml.org", "https://sweet-store-frontend-ten.vercel.app", "https://www.mansoorhotel.in", "https://mansoorhotel.in"],
+     origins=["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173", "http://127.0.0.1:3000", "https://server.uemcseaiml.org", "https://sweet-store-frontend-ten.vercel.app", "https://www.mansoorhotel.in", "https://mansoorhotel.in"],
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
      allow_headers=["Content-Type", "Authorization", "Accept"],
      expose_headers=["Content-Type", "Content-Disposition"],
@@ -24,6 +24,13 @@ CORS(app,
 
 # Increase max content length to handle large base64 images (16MB)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+
+# Add request logging middleware
+@app.before_request
+def log_request():
+    print(f"\n🌐 Incoming {request.method} request to {request.path}")
+    print(f"   Origin: {request.headers.get('Origin', 'No Origin header')}")
+    print(f"   User-Agent: {request.headers.get('User-Agent', 'Unknown')[:50]}...")
 
 @app.route("/server-date", methods=["GET"])
 def get_server_date():
