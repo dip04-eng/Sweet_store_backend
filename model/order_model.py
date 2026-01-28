@@ -211,16 +211,26 @@ def _serialize_order(doc):
     
     return _serialize_datetimes(doc)
 
-def get_orders():
+def get_orders(delivery_date=None):
     """Retrieve all orders, sorted by delivery date (ascending), including _id as string.
     Orders without deliveryDate will be sorted to the end.
+    
+    Args:
+        delivery_date: Optional date string (YYYY-MM-DD) to filter orders by delivery date
     """
     if order_collection is None:
         print("⚠️ Database not connected; returning empty orders list")
         return []
+    
+    # Build query filter
+    query_filter = {}
+    if delivery_date:
+        query_filter["deliveryDate"] = delivery_date
+    
     # Sort by deliveryDate ascending (1), nulls last
     # MongoDB sorts null/missing values first, so we need a pipeline to handle this
     pipeline = [
+        {"$match": query_filter},
         {
             "$addFields": {
                 "deliveryDateSort": {
@@ -234,32 +244,49 @@ def get_orders():
     docs = list(order_collection.aggregate(pipeline))
     return [_serialize_order(d) for d in docs]
 
-def get_daily_summary():
-    """Get summary statistics for today's orders.
+def get_daily_summary(target_date=None):
+    """Get summary statistics for orders on a specific date.
     Only includes non-cancelled orders in the calculations.
+    
+    Args:
+        target_date: Date string (YYYY-MM-DD). If None, uses today's date.
     """
     if order_collection is None:
         print("⚠️ Database not connected; returning empty daily summary")
         return {
-            "total_orders": 0,
-            "total_revenue": 0,
-            "total_items_sold": 0,
-            "popular_sweets": [],
+            "totalOrders": 0,
+            "totalRevenue": 0,
+            "totalPaid": 0,
+            "totalDue": 0,
+            "totalItemsSold": 0,
+            "totalKgSold": 0,
+            "totalPiecesSold": 0,
+            "popularSweets": [],
             "orders": []
         }
 
-    today = datetime.now().strftime("%Y-%m-%d")
-    # Exclude cancelled orders from today's summary
-    today_orders = list(order_collection.find({
-        "orderDate": today,
+    if target_date is None:
+        target_date = datetime.now().strftime("%Y-%m-%d")
+    
+    # Query by deliveryDate instead of orderDate for sales report
+    # Exclude cancelled orders from summary
+    date_orders = list(order_collection.find({
+        "deliveryDate": target_date,
         "status": {"$ne": "Cancelled"}  # Exclude cancelled orders
     }, {"_id": 0}).sort("createdAt", -1))
 
-    total_orders = len(today_orders)
+    total_orders = len(date_orders)
     total_revenue = 0
-    for order in today_orders:
+    total_paid = 0
+    total_due = 0
+    
+    for order in date_orders:
         try:
-            total_revenue += float(order.get("total", 0) or 0)
+            order_total = float(order.get("total", 0) or 0)
+            advance_paid = float(order.get("advancePaid", 0) or 0)
+            total_revenue += order_total
+            total_paid += advance_paid
+            total_due += (order_total - advance_paid)
         except (ValueError, TypeError):
             continue
 
@@ -271,7 +298,7 @@ def get_daily_summary():
     # Import sweet collection to look up units
     from model.sweet_model import sweet_collection
 
-    for order in today_orders:
+    for order in date_orders:
         for item in order.get("items", []) or []:
             try:
                 quantity_ordered = float(item.get("quantity", 0) or 0)
@@ -315,15 +342,17 @@ def get_daily_summary():
 
     popular_sweets = sorted(sweet_stats.values(), key=lambda x: x["quantity"], reverse=True)
 
-    serialized_orders = [_serialize_order(o) for o in today_orders]
+    serialized_orders = [_serialize_order(o) for o in date_orders]
 
     return {
-        "total_orders": total_orders,
-        "total_revenue": total_revenue,
-        "total_items_sold": total_items_sold,
-        "total_Kg_sold": round(total_Kg_sold, 2),
-        "total_pieces_sold": int(total_pieces_sold),
-        "popular_sweets": popular_sweets[:5],
+        "totalOrders": total_orders,
+        "totalRevenue": round(total_revenue, 2),
+        "totalPaid": round(total_paid, 2),
+        "totalDue": round(total_due, 2),
+        "totalItemsSold": total_items_sold,
+        "totalKgSold": round(total_Kg_sold, 2),
+        "totalPiecesSold": int(total_pieces_sold),
+        "popularSweets": popular_sweets[:5],
         "orders": serialized_orders
     }
 

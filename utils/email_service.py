@@ -12,14 +12,17 @@ OUTLOOK_EMAIL = os.getenv("OUTLOOK_EMAIL")
 OUTLOOK_PASSWORD = os.getenv("OUTLOOK_PASSWORD")
 OUTLOOK_HOST = os.getenv("OUTLOOK_HOST", "smtp.office365.com")
 OUTLOOK_PORT = int(os.getenv("OUTLOOK_PORT", 587))
-MANAGER_EMAIL = os.getenv("MANAGER_EMAIL")
+# Support multiple manager emails (comma-separated)
+MANAGER_EMAILS_STR = os.getenv("MANAGER_EMAIL", "")
+MANAGER_EMAIL = MANAGER_EMAILS_STR  # Keep for backward compatibility
+MANAGER_EMAILS = [email.strip() for email in MANAGER_EMAILS_STR.split(',') if email.strip()]
 
 def send_email_with_attachment(to_email, subject, body, attachment_path=None):
     """
     Send email with optional PDF attachment using Outlook SMTP.
     
     Args:
-        to_email: Recipient email address
+        to_email: Recipient email address (string) or list of email addresses
         subject: Email subject
         body: Email body (can be HTML)
         attachment_path: Path to PDF file to attach
@@ -35,7 +38,15 @@ def send_email_with_attachment(to_email, subject, body, attachment_path=None):
         # Create message
         msg = MIMEMultipart()
         msg['From'] = OUTLOOK_EMAIL
-        msg['To'] = to_email
+        
+        # Handle multiple recipients
+        if isinstance(to_email, list):
+            msg['To'] = ', '.join(to_email)
+            recipients = to_email
+        else:
+            msg['To'] = to_email
+            recipients = [to_email]
+        
         msg['Subject'] = subject
         
         # Add body
@@ -67,7 +78,7 @@ def send_email_with_attachment(to_email, subject, body, attachment_path=None):
 
 def send_order_invoice_to_manager(order_data, pdf_path):
     """
-    Send order invoice PDF to manager.
+    Send order invoice PDF to all manager emails.
     
     Args:
         order_data: Dictionary containing order information
@@ -77,11 +88,11 @@ def send_order_invoice_to_manager(order_data, pdf_path):
         Boolean: True if successful, False otherwise
     """
     print(f"📧 send_order_invoice_to_manager called")
-    print(f"   Manager Email: {MANAGER_EMAIL}")
+    print(f"   Manager Emails: {MANAGER_EMAILS}")
     print(f"   PDF Path: {pdf_path}")
     print(f"   Order Data Keys: {order_data.keys() if order_data else 'None'}")
     
-    if not MANAGER_EMAIL:
+    if not MANAGER_EMAILS:
         print("⚠️ Manager email not configured")
         return False
     
@@ -185,11 +196,11 @@ def send_order_invoice_to_manager(order_data, pdf_path):
     </html>
     """
     
-    return send_email_with_attachment(MANAGER_EMAIL, subject, body, pdf_path)
+    return send_email_with_attachment(MANAGER_EMAILS, subject, body, pdf_path)
 
 def send_contact_form_to_manager(contact_data):
     """
-    Send contact form submission to manager.
+    Send contact form submission to all manager emails.
     
     Args:
         contact_data: Dictionary containing name, email, phone, message
@@ -197,7 +208,7 @@ def send_contact_form_to_manager(contact_data):
     Returns:
         Boolean: True if successful, False otherwise
     """
-    if not MANAGER_EMAIL:
+    if not MANAGER_EMAILS:
         print("⚠️ Manager email not configured")
         return False
     
@@ -256,5 +267,131 @@ def send_contact_form_to_manager(contact_data):
     </html>
     """
     
-    print(f"📧 Sending contact form to manager: {MANAGER_EMAIL}")
-    return send_email_with_attachment(MANAGER_EMAIL, subject, body)
+    print(f"📧 Sending contact form to managers: {MANAGER_EMAILS}")
+    return send_email_with_attachment(MANAGER_EMAILS, subject, body)
+
+def send_sales_report_to_manager(date, sales_data, orders, pdf_bytes):
+    """
+    Send next day sales report PDF to all manager emails.
+    
+    Args:
+        date: Report date string (YYYY-MM-DD format)
+        sales_data: Dictionary containing sales summary
+        orders: List of orders for the date
+        pdf_bytes: PDF file as bytes
+    
+    Returns:
+        Boolean: True if successful, False otherwise
+    """
+    if not MANAGER_EMAILS:
+        print("⚠️ Manager email not configured")
+        return False
+    
+    try:
+        from datetime import datetime
+        # Format date for display
+        try:
+            date_obj = datetime.strptime(str(date).split('T')[0], '%Y-%m-%d')
+            formatted_date = date_obj.strftime('%d %B %Y')
+        except:
+            formatted_date = date
+        
+        total_orders = len(orders)
+        total_revenue = sales_data.get('totalRevenue', 0)
+        total_paid = sales_data.get('totalPaid', 0)
+        total_due = sales_data.get('totalDue', 0)
+        
+        subject = f"📊 Sales Report for {formatted_date} - Mansoor Hotel & Sweets"
+        
+        # Create HTML body
+        body = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; color: #333;">
+            <div style="background-color: #C41E3A; padding: 20px; text-align: center;">
+                <h1 style="color: white; margin: 0;">🍬 Mansoor Hotel & Sweets</h1>
+                <p style="color: #FFD700; margin: 5px 0 0 0; font-size: 14px;">Daily Sales Report</p>
+            </div>
+            
+            <div style="padding: 20px;">
+                <h2 style="color: #C41E3A;">Sales Report for {formatted_date}</h2>
+                
+                <p>Dear Manager,</p>
+                <p>Please find below the sales summary for the next day's orders:</p>
+                
+                <div style="background-color: #FFF8DC; padding: 20px; border-radius: 10px; margin: 20px 0;">
+                    <h3 style="color: #C41E3A; margin-top: 0;">📈 Summary</h3>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <td style="padding: 10px; border-bottom: 1px solid #ddd; font-weight: bold;">Total Orders:</td>
+                            <td style="padding: 10px; border-bottom: 1px solid #ddd; text-align: right; font-size: 18px; color: #C41E3A;">{total_orders}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px; border-bottom: 1px solid #ddd; font-weight: bold;">Total Revenue:</td>
+                            <td style="padding: 10px; border-bottom: 1px solid #ddd; text-align: right; font-size: 18px; color: #008000;">₹{total_revenue:,.2f}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px; border-bottom: 1px solid #ddd; font-weight: bold;">Total Paid:</td>
+                            <td style="padding: 10px; border-bottom: 1px solid #ddd; text-align: right; font-size: 16px; color: #008000;">₹{total_paid:,.2f}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px; font-weight: bold;">Total Due:</td>
+                            <td style="padding: 10px; text-align: right; font-size: 16px; color: #DC143C;">₹{total_due:,.2f}</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <div style="background-color: #FEF3E2; padding: 15px; border-left: 4px solid #FFD700; margin: 20px 0;">
+                    <p style="margin: 0;"><strong>📎 Detailed Report Attached:</strong></p>
+                    <p style="margin: 10px 0 0 0;">A comprehensive PDF report with all order details is attached to this email for your review.</p>
+                </div>
+                
+                <div style="background-color: #E8F5E9; padding: 15px; border-left: 4px solid #4CAF50; margin: 20px 0;">
+                    <p style="margin: 0;"><strong>💡 Next Steps:</strong></p>
+                    <ul style="margin: 10px 0 0 0; padding-left: 20px;">
+                        <li>Review the orders scheduled for delivery on {formatted_date}</li>
+                        <li>Ensure adequate stock for all items</li>
+                        <li>Coordinate with the preparation team</li>
+                        <li>Monitor payment collection for due amounts</li>
+                    </ul>
+                </div>
+                
+                <p style="margin-top: 30px; color: #666;">This report helps you plan and prepare for the next day's deliveries efficiently.</p>
+            </div>
+            
+            <div style="background-color: #F5F5DC; padding: 15px; text-align: center; margin-top: 20px;">
+                <p style="margin: 0; color: #666; font-size: 12px;">
+                    This is an automated daily report from Mansoor Hotel & Sweets Management System<br/>
+                    Generated on {datetime.now().strftime('%d-%m-%Y at %I:%M %p')}
+                </p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Save PDF temporarily
+        import tempfile
+        temp_pdf = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf', mode='wb')
+        temp_pdf.write(pdf_bytes)
+        temp_pdf.close()
+        
+        print(f"📧 Sending sales report email to managers: {MANAGER_EMAILS}")
+        print(f"   Report Date: {formatted_date}")
+        print(f"   Total Orders: {total_orders}")
+        print(f"   Total Revenue: ₹{total_revenue}")
+        
+        # Send email with PDF attachment to all managers
+        result = send_email_with_attachment(MANAGER_EMAILS, subject, body, temp_pdf.name)
+        
+        # Clean up temporary file
+        try:
+            os.unlink(temp_pdf.name)
+        except:
+            pass
+        
+        return result
+        
+    except Exception as e:
+        print(f"❌ Failed to send sales report email: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return False

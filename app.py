@@ -3,10 +3,13 @@ from flask_cors import CORS
 from model.sweet_model import add_sweet, get_sweets, remove_sweet, get_sweet_by_id, update_sweet
 from model.order_model import place_order, get_orders, get_daily_summary, update_order_status, edit_order
 from utils.pdf_generator import generate_order_pdf, generate_orders_statement_pdf, generate_sales_report_pdf
-from utils.email_service import send_order_invoice_to_manager, send_contact_form_to_manager
+from utils.email_service import send_order_invoice_to_manager, send_contact_form_to_manager, send_sales_report_to_manager
 import os
 from io import BytesIO
 from dotenv import load_dotenv
+from apscheduler.schedulers.background import BackgroundScheduler
+from datetime import datetime, timedelta
+import pytz
 
 load_dotenv(".env")
 
@@ -571,12 +574,163 @@ def submit_contact_form():
         return jsonify({"error": f"Failed to process contact form: {str(e)}"}), 500
 
 
+@app.route("/admin/test_sales_report_email", methods=["POST", "OPTIONS"])
+def test_sales_report_email():
+    """Test endpoint to manually trigger sales report email for tomorrow."""
+    # Handle CORS preflight
+    if request.method == "OPTIONS":
+        response = jsonify({"status": "ok"})
+        response.headers.add("Access-Control-Allow-Origin", request.headers.get("Origin", "*"))
+        response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type")
+        return response, 200
+    
+    try:
+        # Get tomorrow's date or custom date from request
+        data = request.get_json() or {}
+        test_date = data.get('date')
+        
+        if not test_date:
+            # Default to tomorrow
+            ist = pytz.timezone('Asia/Kolkata')
+            test_date = (datetime.now(ist) + timedelta(days=1)).strftime('%Y-%m-%d')
+        
+        print(f"\n🧪 Testing sales report email for: {test_date}")
+        
+        # Get orders and sales data
+        sales_data = get_daily_summary(test_date)
+        orders = get_orders(delivery_date=test_date)
+        
+        if not orders or len(orders) == 0:
+            return jsonify({
+                "success": False,
+                "message": f"No orders found for {test_date}"
+            }), 404
+        
+        # Generate PDF
+        pdf_bytes = generate_sales_report_pdf(test_date, sales_data, orders)
+        
+        if not pdf_bytes:
+            return jsonify({
+                "success": False,
+                "message": "Failed to generate PDF"
+            }), 500
+        
+        # Send email
+        success = send_sales_report_to_manager(test_date, sales_data, orders, pdf_bytes)
+        
+        if success:
+            return jsonify({
+                "success": True,
+                "message": f"Sales report email sent successfully for {test_date}",
+                "orders_count": len(orders),
+                "total_revenue": sales_data.get('totalRevenue', 0)
+            }), 200
+        else:
+            return jsonify({
+                "success": False,
+                "message": "Failed to send email"
+            }), 500
+            
+    except Exception as e:
+        print(f"❌ Test email error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Failed to send test email: {str(e)}"}), 500
+
+
+def send_daily_sales_report():
+    """
+    Scheduled task to send next day's sales report to manager.
+    Runs daily at configured time (default: 6:00 PM IST).
+    """
+    try:
+        print("\n" + "="*60)
+        print("📧 SCHEDULED TASK: Sending Daily Sales Report")
+        print("="*60)
+        
+        # Get tomorrow's date (next day for which orders need to be prepared)
+        ist = pytz.timezone('Asia/Kolkata')
+        tomorrow = (datetime.now(ist) + timedelta(days=1)).strftime('%Y-%m-%d')
+        
+        print(f"📅 Generating report for: {tomorrow}")
+        
+        # Get orders and sales data for tomorrow
+        sales_data = get_daily_summary(tomorrow)
+        orders = get_orders(delivery_date=tomorrow)
+        
+        if not orders or len(orders) == 0:
+            print(f"ℹ️ No orders found for {tomorrow}. Skipping email.")
+            return
+        
+        print(f"📊 Found {len(orders)} order(s) for {tomorrow}")
+        print(f"💰 Total Revenue: ₹{sales_data.get('totalRevenue', 0)}")
+        
+        # Generate PDF
+        pdf_bytes = generate_sales_report_pdf(tomorrow, sales_data, orders)
+        
+        if not pdf_bytes:
+            print("❌ Failed to generate PDF")
+            return
+        
+        # Send email to manager
+        success = send_sales_report_to_manager(tomorrow, sales_data, orders, pdf_bytes)
+        
+        if success:
+            print(f"✅ Sales report email sent successfully to manager!")
+        else:
+            print(f"❌ Failed to send sales report email")
+        
+        print("="*60 + "\n")
+        
+    except Exception as e:
+        print(f"❌ Error in scheduled sales report: {str(e)}")
+        import traceback
+        traceback.print_exc()
+
 if __name__ == "__main__":
     # Get host and port from environment variables
     host = os.getenv("HOST", "127.0.0.1")
     port = int(os.getenv("PORT", 5000))
     
+    # Initialize scheduler for daily sales report
+    scheduler = BackgroundScheduler()
+    
+    # Get email time from environment or use default (6:00 PM IST)
+    email_hour = int(os.getenv("DAILY_REPORT_HOUR", "18"))
+    email_minute = int(os.getenv("DAILY_REPORT_MINUTE", "0"))
+    
+    # Schedule daily sales report
+    ist = pytz.timezone('Asia/Kolkata')
+    scheduler.add_job(
+        send_daily_sales_report,
+        'cron',
+        hour=email_hour,
+        minute=email_minute,
+        timezone=ist,
+        id='daily_sales_report'
+    )
+    
+    scheduler.start()
+    
+    # Get manager emails for display
+    manager_emails_str = os.getenv('MANAGER_EMAIL', 'Not configured')
+    manager_emails_list = [email.strip() for email in manager_emails_str.split(',') if email.strip()]
+    
+    print(f"\n{'='*60}")
+    print(f"⏰ Scheduled Task Configured")
+    print(f"{'='*60}")
+    print(f"📧 Daily sales report will be sent at {email_hour:02d}:{email_minute:02d} IST")
+    print(f"📨 Report will be sent to {len(manager_emails_list)} manager(s):")
+    for idx, email in enumerate(manager_emails_list, 1):
+        print(f"   {idx}. {email}")
+    print(f"{'='*60}\n")
+    
     print(f"🚀 Starting server on http://{host}:{port}")
     
-    # Disable auto-reloader on Windows to avoid intermittent WinError 10038 during restarts
-    app.run(host=host, port=port, debug=True, use_reloader=False)
+    try:
+        # Disable auto-reloader on Windows to avoid intermittent WinError 10038 during restarts
+        app.run(host=host, port=port, debug=True, use_reloader=False)
+    except (KeyboardInterrupt, SystemExit):
+        scheduler.shutdown()
+        print("\n👋 Server stopped. Scheduler shut down gracefully.")
