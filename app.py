@@ -3,7 +3,7 @@ from flask_cors import CORS
 from model.sweet_model import add_sweet, get_sweets, remove_sweet, get_sweet_by_id, update_sweet
 from model.order_model import place_order, get_orders, get_daily_summary, update_order_status, edit_order
 from utils.pdf_generator import generate_order_pdf, generate_orders_statement_pdf, generate_sales_report_pdf
-from utils.email_service import send_order_invoice_to_manager, send_contact_form_to_manager, send_sales_report_to_manager
+from utils.email_service import send_order_invoice_to_manager, send_order_invoice_to_customer, send_contact_form_to_manager, send_sales_report_to_manager
 import os
 from io import BytesIO
 from dotenv import load_dotenv
@@ -131,8 +131,8 @@ def new_order():
         print("✅ Order saved successfully!")
         print(f"Order ID: {order_result.get('_id')}")
         
-        # Generate PDF invoice and send to manager
-        print("\n📧 Generating invoice and sending to manager...")
+        # Generate PDF invoice and send to manager and customer
+        print("\n📧 Generating invoice and sending emails...")
         try:
             order_id = str(order_result.get('_id'))
             pdf_filename = f"invoice_{order_id}.pdf"
@@ -142,13 +142,24 @@ def new_order():
             
             if pdf_path:
                 print(f"   PDF created at: {pdf_path}")
-                print(f"   Sending email to manager...")
-                email_result = send_order_invoice_to_manager(order_result, pdf_path)
                 
-                if email_result:
-                    print(f"   ✅ Email sent successfully!")
+                # Send email to manager
+                print(f"   Sending email to manager...")
+                manager_email_result = send_order_invoice_to_manager(order_result, pdf_path)
+                
+                if manager_email_result:
+                    print(f"   ✅ Manager email sent successfully!")
                 else:
-                    print(f"   ❌ Email sending failed!")
+                    print(f"   ❌ Manager email sending failed!")
+                
+                # Send email to customer
+                print(f"   Sending email to customer...")
+                customer_email_result = send_order_invoice_to_customer(order_result, pdf_path)
+                
+                if customer_email_result:
+                    print(f"   ✅ Customer email sent successfully!")
+                else:
+                    print(f"   ❌ Customer email sending failed (may not have customer email)")
                 
                 # Clean up PDF file after sending
                 if os.path.exists(pdf_path):

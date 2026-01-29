@@ -198,6 +198,144 @@ def send_order_invoice_to_manager(order_data, pdf_path):
     
     return send_email_with_attachment(MANAGER_EMAILS, subject, body, pdf_path)
 
+def send_order_invoice_to_customer(order_data, pdf_path):
+    """
+    Send order invoice PDF to customer's email.
+    
+    Args:
+        order_data: Dictionary containing order information
+        pdf_path: Path to generated PDF invoice
+    
+    Returns:
+        Boolean: True if successful, False otherwise
+    """
+    print(f"📧 send_order_invoice_to_customer called")
+    
+    customer_email = order_data.get('email', None)
+    
+    if not customer_email:
+        print("⚠️ Customer email not provided in order")
+        return False
+    
+    print(f"   Customer Email: {customer_email}")
+    print(f"   PDF Path: {pdf_path}")
+    
+    # Get sequential order ID
+    order_number = order_data.get('orderNumber', None)
+    if order_number:
+        order_id = f"{order_number:04d}"  # Format as 0001, 0002, etc.
+    else:
+        order_id = str(order_data.get('_id', 'N/A'))  # Fallback to MongoDB ID
+    
+    customer_name = order_data.get('customerName', 'Customer')
+    total = order_data.get('total', 0)
+    
+    # Format delivery date as dd-mm-yyyy
+    delivery_date = order_data.get('deliveryDate', 'N/A')
+    if delivery_date != 'N/A':
+        try:
+            from datetime import datetime
+            date_obj = datetime.strptime(str(delivery_date).split('T')[0], '%Y-%m-%d')
+            delivery_date = date_obj.strftime('%d-%m-%Y')
+        except:
+            pass
+    
+    items = order_data.get('items', [])
+    
+    print(f"   Order ID: {order_id}")
+    print(f"   Customer: {customer_name}")
+    
+    subject = f"🎉 Order Confirmation #{order_id} - Mansoor Hotel & Sweets"
+    
+    body = f"""
+    <html>
+    <body style="font-family: Arial, sans-serif; color: #333;">
+        <div style="bacKground-color: #FFD700; padding: 20px; text-align: center;">
+            <h1 style="color: #0D0D0D; margin: 0;">🍬 Mansoor Hotel & Sweets</h1>
+            <p style="color: #D2691E; margin: 5px 0 0 0; font-size: 14px;">Thank you for your order!</p>
+        </div>
+        
+        <div style="padding: 20px;">
+            <h2 style="color: #D2691E;">Dear {customer_name},</h2>
+            
+            <p>Thank you for choosing Mansoor Hotel & Sweets! Your order has been confirmed successfully.</p>
+            
+            <div style="bacKground-color: #E8F5E9; padding: 15px; border-left: 4px solid #4CAF50; margin: 20px 0;">
+                <p style="margin: 0; font-size: 16px;"><strong>✅ Your order has been received and is being processed!</strong></p>
+            </div>
+            
+            <h3 style="color: #D2691E; margin-top: 30px;">Order Details:</h3>
+            <table style="border-collapse: collapse; width: 100%; margin: 20px 0;">
+                <tr>
+                    <td style="padding: 10px; bacKground-color: #FFF8DC; font-weight: bold;">Order ID:</td>
+                    <td style="padding: 10px; bacKground-color: #FFFEF0;">{order_id}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; bacKground-color: #FFF8DC; font-weight: bold;">Mobile:</td>
+                    <td style="padding: 10px; bacKground-color: #FFFEF0;">{order_data.get('mobile', 'N/A')}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; bacKground-color: #FFF8DC; font-weight: bold;">Total Amount:</td>
+                    <td style="padding: 10px; bacKground-color: #FFFEF0; font-size: 18px; font-weight: bold; color: #D2691E;">₹{total}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; bacKground-color: #FFF8DC; font-weight: bold;">Delivery Date:</td>
+                    <td style="padding: 10px; bacKground-color: #FFFEF0;">{delivery_date}</td>
+                </tr>
+            </table>
+            
+            <h3 style="color: #D2691E; margin-top: 30px;">Your Items:</h3>
+            <table style="border-collapse: collapse; width: 100%; margin: 20px 0; border: 1px solid #ddd;">
+                <thead>
+                    <tr style="bacKground-color: #D2691E; color: white;">
+                        <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Sweet Name</th>
+                        <th style="padding: 12px; text-align: center; border: 1px solid #ddd;">Quantity</th>
+                        <th style="padding: 12px; text-align: right; border: 1px solid #ddd;">Price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {''.join([f'''
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #ddd;">{item.get('sweetName', 'N/A')}</td>
+                        <td style="padding: 10px; text-align: center; border: 1px solid #ddd;">{item.get('quantity', 0)} {item.get('unit', 'Kg')}</td>
+                        <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">₹{item.get('price', 0)}</td>
+                    </tr>
+                    ''' for item in items])}
+                </tbody>
+            </table>
+            
+            <div style="bacKground-color: #FFF8DC; padding: 15px; border-left: 4px solid #FFD700; margin: 20px 0;">
+                <p style="margin: 0;"><strong>📎 Invoice Attached:</strong></p>
+                <p style="margin: 10px 0 0 0;">Please find your detailed invoice PDF attached to this email for your records.</p>
+            </div>
+            
+            <div style="bacKground-color: #FEF3E2; padding: 15px; border-left: 4px solid #FF9800; margin: 20px 0;">
+                <p style="margin: 0;"><strong>📍 Delivery Information:</strong></p>
+                <p style="margin: 10px 0 0 0;">Your order will be delivered on <strong>{delivery_date}</strong>. We'll contact you shortly to confirm the delivery details.</p>
+            </div>
+            
+            <p style="margin-top: 30px; color: #666;">
+                If you have any questions about your order, please don't hesitate to contact us.
+            </p>
+            
+            <div style="text-align: center; margin-top: 30px;">
+                <p style="font-size: 18px; color: #D2691E; margin: 0;"><strong>Thank you for your business!</strong></p>
+                <p style="color: #666; margin: 10px 0 0 0;">We look forward to serving you again.</p>
+            </div>
+        </div>
+        
+        <div style="bacKground-color: #F5F5DC; padding: 15px; text-align: center; margin-top: 20px;">
+            <p style="margin: 0; color: #666; font-size: 12px;">
+                Mansoor Hotel & Sweets - Quality Sweets Since Years<br/>
+                This is an automated confirmation email
+            </p>
+        </div>
+    </body>
+    </html>
+    """
+    
+    return send_email_with_attachment(customer_email, subject, body, pdf_path)
+
 def send_contact_form_to_manager(contact_data):
     """
     Send contact form submission to all manager emails.
