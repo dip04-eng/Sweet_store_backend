@@ -61,17 +61,29 @@ def send_email_with_attachment(to_email, subject, body, attachment_path=None):
                 msg.attach(attachment)
         
         # Connect to SMTP server
+        print(f"🔌 Connecting to {OUTLOOK_HOST}:{OUTLOOK_PORT}...")
         server = smtplib.SMTP(OUTLOOK_HOST, OUTLOOK_PORT)
+        server.set_debuglevel(1)  # Enable SMTP debug output
         server.starttls()
+        print(f"🔑 Logging in as {OUTLOOK_EMAIL}...")
         server.login(OUTLOOK_EMAIL, OUTLOOK_PASSWORD)
         
         # Send email
+        print(f"📤 Sending email to {recipients}...")
         server.send_message(msg)
         server.quit()
         
         print(f"✅ Email sent successfully to {to_email}")
         return True
         
+    except smtplib.SMTPAuthenticationError as e:
+        print(f"❌ SMTP Authentication Failed: {str(e)}")
+        print(f"💡 TIP: If using Outlook/Office365, you may need an App-Specific Password")
+        print(f"   Generate one at: https://account.microsoft.com/security")
+        return False
+    except smtplib.SMTPException as e:
+        print(f"❌ SMTP Error: {str(e)}")
+        return False
     except Exception as e:
         print(f"❌ Failed to send email: {str(e)}")
         return False
