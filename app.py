@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from model.sweet_model import add_sweet, get_sweets, remove_sweet, get_sweet_by_id, update_sweet
-from model.order_model import place_order, get_orders, get_daily_summary, update_order_status, edit_order
+from model.order_model import place_order, get_orders, get_daily_summary, update_order_status, edit_order, add_payment_to_order, delete_payment_from_order
 from utils.pdf_generator import generate_order_pdf, generate_orders_statement_pdf, generate_sales_report_pdf
 from utils.email_service import send_order_invoice_to_manager, send_order_invoice_to_customer, send_contact_form_to_manager, send_sales_report_to_manager
 import os
@@ -391,6 +391,36 @@ def admin_edit_order(order_id):
         return jsonify({"message": "Order updated successfully", "order": updated}), 200
     except Exception as e:
         return jsonify({"error": f"Failed to edit order: {str(e)}"}), 500
+
+@app.route("/admin/order/<order_id>/payment", methods=["POST"])
+def add_order_payment(order_id):
+    """Add a payment to an order."""
+    data = request.get_json() or {}
+    amount = data.get("amount", 0)
+    note = data.get("note", "")
+    
+    try:
+        amount = float(amount)
+        if amount <= 0:
+            return jsonify({"error": "Payment amount must be greater than 0"}), 400
+        
+        updated = add_payment_to_order(order_id, amount, note)
+        if not updated:
+            return jsonify({"error": "Order not found"}), 404
+        return jsonify({"message": "Payment added successfully", "order": updated}), 200
+    except Exception as e:
+        return jsonify({"error": f"Failed to add payment: {str(e)}"}), 500
+
+@app.route("/admin/order/<order_id>/payment/<payment_id>", methods=["DELETE"])
+def delete_order_payment(order_id, payment_id):
+    """Delete a payment from an order."""
+    try:
+        updated = delete_payment_from_order(order_id, payment_id)
+        if not updated:
+            return jsonify({"error": "Order or payment not found"}), 404
+        return jsonify({"message": "Payment deleted successfully", "order": updated}), 200
+    except Exception as e:
+        return jsonify({"error": f"Failed to delete payment: {str(e)}"}), 500
 
 @app.route("/admin/fix-festival-sweets", methods=["POST"])
 def fix_festival_sweets():

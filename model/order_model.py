@@ -377,6 +377,106 @@ def update_order_status(order_id: str, status: str):
         return None
     return _serialize_order(updated)
 
+def add_payment_to_order(order_id: str, amount: float, note: str = ""):
+    """Add a payment to order's payment history.
+    Updates advancePaid and maintains payment history.
+    Returns updated order or None if not found.
+    """
+    if order_collection is None:
+        raise RuntimeError("Database not connected: cannot add payment")
+    try:
+        oid = ObjectId(order_id)
+    except Exception:
+        return None
+    
+    # Get current order
+    current_order = order_collection.find_one({"_id": oid})
+    if not current_order:
+        return None
+    
+    # Initialize payment history if it doesn't exist
+    payment_history = current_order.get("paymentHistory", [])
+    
+    # Create new payment entry
+    payment_entry = {
+        "paymentId": str(ObjectId()),  # Unique ID for this payment
+        "amount": float(amount),
+        "note": note,
+        "timestamp": datetime.now()
+    }
+    
+    # Add to payment history
+    payment_history.append(payment_entry)
+    
+    # Update advancePaid
+    current_advance = float(current_order.get("advancePaid", 0) or 0)
+    new_advance = current_advance + float(amount)
+    
+    # Update order
+    result = order_collection.find_one_and_update(
+        {"_id": oid},
+        {
+            "$set": {
+                "advancePaid": new_advance,
+                "paymentHistory": payment_history
+            }
+        },
+        return_document=ReturnDocument.AFTER
+    )
+    
+    return _serialize_order(result) if result else None
+
+def delete_payment_from_order(order_id: str, payment_id: str):
+    """Delete a payment from order's payment history.
+    Updates advancePaid by subtracting the payment amount.
+    Returns updated order or None if not found.
+    """
+    if order_collection is None:
+        raise RuntimeError("Database not connected: cannot delete payment")
+    try:
+        oid = ObjectId(order_id)
+    except Exception:
+        return None
+    
+    # Get current order
+    current_order = order_collection.find_one({"_id": oid})
+    if not current_order:
+        return None
+    
+    # Get payment history
+    payment_history = current_order.get("paymentHistory", [])
+    
+    # Find and remove the payment
+    payment_amount = 0
+    updated_history = []
+    for payment in payment_history:
+        if payment.get("paymentId") == payment_id:
+            payment_amount = float(payment.get("amount", 0))
+        else:
+            updated_history.append(payment)
+    
+    if payment_amount == 0:
+        # Payment not found
+        return None
+    
+    # Update advancePaid
+    current_advance = float(current_order.get("advancePaid", 0) or 0)
+    new_advance = max(0, current_advance - payment_amount)
+    
+    # Update order
+    result = order_collection.find_one_and_update(
+        {"_id": oid},
+        {
+            "$set": {
+                "advancePaid": new_advance,
+                "paymentHistory": updated_history
+            }
+        },
+        return_document=ReturnDocument.AFTER
+    )
+    
+    return _serialize_order(result) if result else None
+
 def edit_order(order_id: str, updates: dict):
     """Update provided fields of an order and return the updated document.
     Supports field mapping: contact->mobile, amount->total.
