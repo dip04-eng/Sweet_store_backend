@@ -394,20 +394,20 @@ def admin_edit_order(order_id):
 
 @app.route("/admin/order/<order_id>/payment", methods=["POST"])
 def add_order_payment(order_id):
-    """Add a payment to an order."""
+    """Add a payment to an order. Positive amounts add payment, negative amounts revert payment."""
     data = request.get_json() or {}
     amount = data.get("amount", 0)
     note = data.get("note", "")
     
     try:
         amount = float(amount)
-        if amount <= 0:
-            return jsonify({"error": "Payment amount must be greater than 0"}), 400
+        if amount == 0:
+            return jsonify({"error": "Payment amount cannot be zero"}), 400
         
         updated = add_payment_to_order(order_id, amount, note)
         if not updated:
             return jsonify({"error": "Order not found"}), 404
-        return jsonify({"message": "Payment added successfully", "order": updated}), 200
+        return jsonify({"message": "Payment processed successfully", "order": updated}), 200
     except Exception as e:
         return jsonify({"error": f"Failed to add payment: {str(e)}"}), 500
 

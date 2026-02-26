@@ -379,6 +379,7 @@ def update_order_status(order_id: str, status: str):
 
 def add_payment_to_order(order_id: str, amount: float, note: str = ""):
     """Add a payment to order's payment history.
+    Positive amounts add to advancePaid, negative amounts subtract (revert).
     Updates advancePaid and maintains payment history.
     Returns updated order or None if not found.
     """
@@ -394,6 +395,19 @@ def add_payment_to_order(order_id: str, amount: float, note: str = ""):
     if not current_order:
         return None
     
+    # Calculate new advance and validate
+    current_advance = float(current_order.get("advancePaid", 0) or 0)
+    new_advance = current_advance + float(amount)
+    
+    # Ensure advancePaid doesn't go below 0
+    if new_advance < 0:
+        raise ValueError("Cannot revert more than paid amount")
+    
+    # Ensure advancePaid doesn't exceed total
+    total = float(current_order.get("total", 0) or 0)
+    if new_advance > total:
+        raise ValueError("Payment would exceed total amount")
+    
     # Initialize payment history if it doesn't exist
     payment_history = current_order.get("paymentHistory", [])
     
@@ -407,10 +421,6 @@ def add_payment_to_order(order_id: str, amount: float, note: str = ""):
     
     # Add to payment history
     payment_history.append(payment_entry)
-    
-    # Update advancePaid
-    current_advance = float(current_order.get("advancePaid", 0) or 0)
-    new_advance = current_advance + float(amount)
     
     # Update order
     result = order_collection.find_one_and_update(
